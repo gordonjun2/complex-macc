@@ -1,3 +1,10 @@
+***
+
+Note: 
+- *main.py* is the main entry.
+- Convolution is performed using *tf.matmul* instead of *tf.nn.conv2d* (read [here](https://ai.stackexchange.com/questions/11172/how-can-the-convolution-operation-be-implemented-as-a-matrix-multiplication))
+
+***
 
 # The JAG inertial confinement fusion simulation dataset for multi-modal scientific deep learning.
 This code contains pre-trained machine learning models, architectures and implementations for building surrogate models in scientific machine learning (SciML). SciML is a growing area, with a lot of unique challenges and problems. A lot of them are outlined in the Department of Energy's recent report on "Basic Research Needs for Scientific Machine Learning " [[pdf]](https://www.osti.gov/servlets/purl/1478744).
