@@ -1,0 +1,9 @@
+*.pyc
+*.npy
+out/
+surrogate_outs/
+tensorboard_plots/
+test_graphs/
+train_graphs/
+wae_metric/ae_model_weights
+wae_metric/ae_outs
