@@ -152,11 +152,50 @@ def run(**kwargs):
 
     print('Training starts...')
 
-    for tr_id in tr_id_split:
-        X_train  = jag[tr_id,:]
-        for it in range(0,100000//split_n):
-            if len(X_train) < batch_size:
-                batch_size = len(X_train)
+    if complex_mode:
+        
+        it_total = 0
+
+        for tr_id in tr_id_split:
+            X_train  = jag[tr_id,:]
+            for it in range(0,100000//split_n):
+                if len(X_train) < batch_size:
+                    batch_size = len(X_train)
+                randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+                y_mb = X_train[randid,:]
+                X_mb = X_train[randid,:]
+
+
+                z_mb = sample_z(batch_size,dim_z)
+
+                fd = {y:y_mb, train_mode: True,z:z_mb}
+                for i in range(1):
+                    _, G_loss_curr,tmp1,tmp2 = sess.run([G_solver, G_loss,rec_error,gen_error],
+                                            feed_dict=fd)
+                for i in range(1):
+                    _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict=fd)
+
+                if (it_total+1) % 100 ==0:
+                    summary = sess.run(merged,feed_dict=fd)
+                    writer.add_summary(summary, it_total)
+
+                if (it_total+1) % 1000 == 0:
+                    print('Iter: {}; Recon_Error = : {:.4}, G_Loss: {:.4}; D_Loss: {:.4}'
+                        .format(it_total+1, tmp1, tmp2, D_loss_curr))
+
+                    z_test = sample_z(len(te_id),dim_z)
+                    fd = {train_mode:False, y:X_test_set, z:z_test}
+                    samples,summary_val = sess.run([y_recon,merged],feed_dict=fd)
+
+                    writer_test.add_summary(summary_val, it_total)
+
+                if (it_total+1)%1000==0:
+                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
+
+                it_total = it_total + 1
+
+    else:
+        for it in range(0,100000):
             randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
             y_mb = X_train[randid,:]
             X_mb = X_train[randid,:]
@@ -187,8 +226,8 @@ def run(**kwargs):
 
             if (it+1)%1000==0:
                 save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
-    return
 
+    return
 
 if __name__=='__main__':
     run(datapath='../data/',vizdir='viz',modeldir='pretrained_model',lam=1e-2,dimz=LATENT_SPACE_DIM)
