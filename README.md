@@ -3,6 +3,7 @@
 Note: 
 - *main.py* is the main entry.
 - Convolution is performed using *tf.matmul* instead of *tf.nn.conv2d* (read [here](https://ai.stackexchange.com/questions/11172/how-can-the-convolution-operation-be-implemented-as-a-matrix-multiplication))
+- Use ```python main.py --complex_mode --train_ae``` to train. (*--complex_mode* is to enable training on the complex images and *--train_ae* is to enable training for the WAE.)
 
 ***
 
