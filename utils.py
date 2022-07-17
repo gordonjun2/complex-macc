@@ -31,11 +31,17 @@ def sample_eps(m, n):
     return np.random.uniform(-1., 1., size=[m, n])
 
 
-def GANloss(D_real,D_fake):
-    D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_real, labels=tf.ones_like(D_real)))
-    D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.zeros_like(D_fake)))
-    D_loss = D_loss_real + D_loss_fake
-    G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
+def GANloss(D_real,D_fake, complex_mode):
+    if complex_mode:
+        D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_real), labels=tf.ones_like(tf.abs(D_real))))
+        D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_fake), labels=tf.zeros_like(tf.abs(D_fake))))
+        D_loss = D_loss_real + D_loss_fake
+        G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_fake), labels=tf.ones_like(tf.abs(D_fake))))
+    else:
+        D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_real, labels=tf.ones_like(D_real)))
+        D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.zeros_like(D_fake)))
+        D_loss = D_loss_real + D_loss_fake
+        G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
     return D_loss,G_adv
 
 def bias_variable(shape, name=None):

@@ -15,7 +15,7 @@ import os
 from modelsv2 import *
 from utils import *
 import shutil
-import cPickle as pkl
+#import cPickle as pkl
 import argparse
 from sklearn.preprocessing import MinMaxScaler, scale
 
@@ -28,10 +28,11 @@ batch_size = 64
 
 
 def run(**kwargs):
-    fdir = kwargs.get('fdir','./outs')
+    fdir = kwargs.get('fdir', './surrogate_outs')
     modeldir = kwargs.get('modeldir','./pretrained_model')
     ae_path = kwargs.get('ae_dir','./wae_metric/pretrained_model')
     datapath = kwargs.get('datapath','./data/')
+
     visdir = './tensorboard_plots'
     if not os.path.exists(fdir):
         os.makedirs(fdir)
@@ -42,8 +43,10 @@ def run(**kwargs):
     if not os.path.exists(visdir):
         os.makedirs(visdir)
 
+    complex_mode = kwargs.get('complex_mode')
 
-    jag_inp, jag_sca, jag_img = load_dataset(datapath)
+
+    jag_inp, jag_sca, jag_img = load_dataset(datapath, complex_mode)
     tr_id = np.random.choice(jag_sca.shape[0],int(jag_sca.shape[0]*0.95),replace=False)
 
     te_id = list(set(range(jag_sca.shape[0])) - set(tr_id))
@@ -90,7 +93,8 @@ def run(**kwargs):
     y_mm = tf.concat([y_img,y_sca],axis=1)
 
     '''**** Encode the img, scalars ground truth --> latent vector for loss computation ****'''
-    y_latent_img = wae.gen_encoder_FCN(y_mm, dim_y_img_latent,train_mode=False)
+    # Using the pretrained encoder from pretrained Multi-modal Wasserstein Autoencoder
+    y_latent_img = wae.gen_encoder_FCN(y_mm, dim_y_img_latent, False, complex_mode)
 
     '''**** Train cycleGAN input params <--> latent space of (images, scalars) ****'''
 
@@ -103,12 +107,18 @@ def run(**kwargs):
                      'L_rec':1}
 
     JagNet_MM = cycModel_MM(**cycGAN_params)
-    JagNet_MM.run(train_mode)
+    JagNet_MM.run(train_mode, complex_mode)
 
     '''**** Decode the prediction from latent vector --> img, scalars ****'''
-    y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca,train_mode=False)
-    img_loss = tf.reduce_mean(tf.square(y_img_out[:,:16384] - y_img))
-    sca_loss = tf.reduce_mean(tf.square(y_img_out[:,16384:] - y_sca))
+    # Using the pretrained decoder from pretrained Multi-modal Wasserstein Autoencoder
+    y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca, False, complex_mode)
+
+    if complex_mode:
+        img_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out[:,:16384] - y_img)))
+        sca_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out[:,16384:] - y_sca)))
+    else:
+        img_loss = tf.reduce_mean(tf.square(y_img_out[:,:16384] - y_img))
+        sca_loss = tf.reduce_mean(tf.square(y_img_out[:,16384:] - y_sca))
 
     fwd_img_summary = tf.summary.scalar(name='Image Loss', tensor=img_loss)
     fwd_sca_summary = tf.summary.scalar(name='Scalar Loss', tensor=sca_loss)

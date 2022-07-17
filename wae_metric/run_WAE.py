@@ -28,8 +28,11 @@ def sample_z(L,dim,type='uniform'):
 
     return np.asarray(theta)
 
-def load_dataset(datapath):
-    jag_img = np.load(datapath+'jag10K_images.npy')
+def load_dataset(datapath, complex_mode):
+    if complex_mode:
+        jag_img = np.load(datapath+'jag10K_images_complex.npy')
+    else:
+        jag_img = np.load(datapath+'jag10K_images.npy')
     jag_sca = np.load(datapath+'jag10K_0_scalars.npy')
     jag_inp = np.load(datapath+'jag10K_params.npy')
 
@@ -37,13 +40,13 @@ def load_dataset(datapath):
 
 def run(**kwargs):
 
-    fdir = kwargs.get('fdir','./expt_out')
-    modeldir = kwargs.get('modeldir','./expt_model')
-    datapath = kwargs.get('datapath','../../data/')
+    fdir = kwargs.get('fdir','./wae_metric/outs')
+    modeldir = kwargs.get('modeldir','./wae_metric/model_weights')
+    datapath = kwargs.get('datapath','./data/icf-jag-10k/')
     vizdir = kwargs.get('vizdir','graphs')
     lam = kwargs.get('lam',1e-4)
     dim_z = kwargs.get('dimz',LATENT_SPACE_DIM)
-
+    complex_mode = kwargs.get('complex_mode')
 
     # if not os.path.exists(fdir):
     #     os.makedirs(fdir)
@@ -51,14 +54,14 @@ def run(**kwargs):
     if not os.path.exists(modeldir):
         os.makedirs(modeldir)
 
-    jag_inp, jag_sca, jag_img = load_dataset(datapath)
+    jag_inp, jag_sca, jag_img = load_dataset(datapath, complex_mode)
     jag = np.hstack((jag_img,jag_sca))
 
 
     tr_id = np.random.choice(jag.shape[0],int(jag.shape[0]*0.95),replace=False)
     te_id = list(set(range(jag.shape[0])) - set(tr_id))
 
-    X_train = jag[tr_id,:]
+      = jag[tr_id,:]
     y_train = jag[tr_id,:]
 
 
@@ -75,19 +78,28 @@ def run(**kwargs):
     z = tf.placeholder(tf.float32, shape=[None, dim_z])
     train_mode = tf.placeholder(tf.bool,name='train_mode')
 
+    # Model initialisation
 
-    z_sample = gen_encoder_FCN(y, dim_z,train_mode)
+    # Multi-modal Wasserstein Autoencoder (see architecture in paper)
 
-    y_recon = var_decoder_FCN(z_sample, dim_image,train_mode)
+    z_sample = gen_encoder_FCN(y, dim_z,train_mode, complex_mode)
 
-    D_sample = discriminator_FCN(y_recon, z_sample)
-    D_prior = discriminator_FCN(y, z, True)
+    y_recon = var_decoder_FCN(z_sample, dim_image,train_mode, complex_mode)
 
+    # AE Discriminator (architecture not in paper)
 
+    D_sample = discriminator_FCN(y_recon, z_sample, None, complex_mode)
+    D_prior = discriminator_FCN(y, z, True, complex_mode)
 
-    img_loss = tf.reduce_mean(tf.square(y_recon-y))
-    rec_error = tf.reduce_mean(tf.nn.l2_loss(y_recon-y))
-    D_loss,gen_error = compute_adv_loss(D_prior,D_sample)
+    # Model initialisation ends
+
+    if complex_mode:
+        img_loss = tf.reduce_mean(tf.square(tf.abs(y_recon-y)))
+        rec_error = tf.reduce_mean(tf.nn.l2_loss(tf.abs(y_recon-y)))
+    else:
+        img_loss = tf.reduce_mean(tf.square(y_recon-y))
+        rec_error = tf.reduce_mean(tf.nn.l2_loss(y_recon-y))
+    D_loss,gen_error = compute_adv_loss(D_prior,D_sample, complex_mode)
     G_loss = rec_error+lam*gen_error
 
     t_vars = tf.global_variables()

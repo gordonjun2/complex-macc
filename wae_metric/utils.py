@@ -83,11 +83,17 @@ def special_normalize(jag_):
     return jag
 
 
-def GANloss(D_real,D_fake):
-    D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_real, labels=tf.ones_like(D_real)))
-    D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.zeros_like(D_fake)))
-    D_loss = D_loss_real + D_loss_fake
-    G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
+def GANloss(D_real,D_fake, complex_mode):
+    if complex_mode:
+        D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_real), labels=tf.ones_like(tf.abs(D_real))))
+        D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_fake), labels=tf.zeros_like(tf.abs(D_fake))))
+        D_loss = D_loss_real + D_loss_fake
+        G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_fake), labels=tf.ones_like(tf.abs(D_fake))))
+    else:
+        D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_real, labels=tf.ones_like(D_real)))
+        D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.zeros_like(D_fake)))
+        D_loss = D_loss_real + D_loss_fake
+        G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
     return D_loss,G_adv
 
 def bias_variable(shape, name=None):
@@ -229,11 +235,17 @@ def plot_save(samples,figsize=(4,4),wspace=0.05,hspace=0.05,cmap='gray',resize=F
 def log(x):
     return tf.log(x + 1e-8)
 
-def compute_adv_loss(D_real,D_fake):
-    D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_real, labels=tf.ones_like(D_real)))
-    D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.zeros_like(D_fake)))
-    D_loss = D_loss_real + D_loss_fake
-    G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
+def compute_adv_loss(D_real,D_fake,complex_mode):
+    if complex_mode:
+        D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_real), labels=tf.ones_like(tf.abs(D_real))))
+        D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_fake), labels=tf.zeros_like(tf.abs(D_fake))))
+        D_loss = D_loss_real + D_loss_fake
+        G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.abs(D_fake), labels=tf.ones_like(tf.abs(D_fake))))
+    else:
+        D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_real, labels=tf.ones_like(D_real)))
+        D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.zeros_like(D_fake)))
+        D_loss = D_loss_real + D_loss_fake
+        G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
     return D_loss,G_adv
 
 def plot(samples,immax=None,immin=None):
@@ -271,11 +283,3 @@ def xavier_init(size):
     in_dim = size[0]
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
-
-
-def compute_adv_loss(D_real,D_fake):
-    D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_real, labels=tf.ones_like(D_real)))
-    D_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.zeros_like(D_fake)))
-    D_loss = D_loss_real + D_loss_fake
-    G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
-    return D_loss,G_adv
