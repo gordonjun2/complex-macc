@@ -44,15 +44,34 @@ def run(**kwargs):
         os.makedirs(visdir)
 
     complex_mode = kwargs.get('complex_mode')
+    split_n = kwargs.get('split_n')
 
+    print('Loading dataset...')
 
     jag_inp, jag_sca, jag_img = load_dataset(datapath, complex_mode)
     tr_id = np.random.choice(jag_sca.shape[0],int(jag_sca.shape[0]*0.95),replace=False)
 
     te_id = list(set(range(jag_sca.shape[0])) - set(tr_id))
-    X_train = jag_inp[tr_id,:]
-    y_sca_train = jag_sca[tr_id,:]
-    y_img_train = jag_img[tr_id,:]
+    
+    print('Splitting dataset indexes...')
+
+    sub_X_train_len = len(tr_id)/split_n
+
+    if sub_X_train_len % 1 == 0:
+        sub_X_train_len = int(sub_X_train_len)
+        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] for i in range(sub_X_train_len)]
+    else:
+        sub_X_train_len = len(tr_id)//split_n
+        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(sub_X_train_len+1)]
+
+    if batch_size > sub_X_train_len:
+        batch_size = sub_X_train_len
+
+    print('Batch Size: ', batch_size)
+
+    # X_train = jag_inp[tr_id,:]
+    # y_sca_train = jag_sca[tr_id,:]
+    # y_img_train = jag_img[tr_id,:]
 
     np.random.shuffle(te_id)
 
@@ -73,9 +92,9 @@ def run(**kwargs):
 
 
     print("Dataset dimensions: ",X_test.shape,y_sca_test.shape,y_img_test.shape)
-    dim_x = X_train.shape[1]
-    dim_y_sca = y_sca_train.shape[1]
-    dim_y_img = y_img_train.shape[1]
+    dim_x = jag_inp.shape[1]
+    dim_y_sca = jag_sca.shape[1]
+    dim_y_img = jag_img.shape[1]
     dim_y_img_latent = LATENT_SPACE_DIM #latent space
 
     ### Metric params
@@ -85,8 +104,13 @@ def run(**kwargs):
     y_sca_test_mb = y_sca_test[-100:,:]
     y_img_test_mb = y_img_test[-100:,:]
 
+    print('Initialising model...')
+
     y_sca = tf.placeholder(tf.float32, shape=[None, dim_y_sca])
-    y_img = tf.placeholder(tf.float32, shape=[None, dim_y_img])
+    if complex_mode:
+        y_img = tf.placeholder(tf.complex64, shape=[None, dim_y_img])
+    else:
+        y_img = tf.placeholder(tf.float32, shape=[None, dim_y_img])
     x = tf.placeholder(tf.float32, shape=[None, dim_x])
     train_mode = tf.placeholder(tf.bool,name='train_mode')
 
@@ -145,53 +169,61 @@ def run(**kwargs):
 
     writer = tf.summary.FileWriter(visdir+'/{}'.format(modeldir), sess.graph)
 
-    i = 0
-    for it in range(100000):
+    print('Training starts...')
 
-        randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
-        x_mb = X_train[randid,:]
-        y_img_mb = y_img_train[randid,:]
-        y_sca_mb = y_sca_train[randid,:]
+    for tr_id in tr_id_split:
+        X_train = jag_inp[tr_id,:]
+        y_sca_train = jag_sca[tr_id,:]
+        y_img_train = jag_img[tr_id,:]
+        for it in range(100000//split_n):
 
-        fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
+            if len(X_train) < batch_size:
+                batch_size = len(X_train)
 
-        for _ in range(10):
-            _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
+            randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+            x_mb = X_train[randid,:]
+            y_img_mb = y_img_train[randid,:]
+            y_sca_mb = y_sca_train[randid,:]
 
-        gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
-                                           JagNet_MM.loss_gen1,
-                                           JagNet_MM.loss_adv],
-                                          feed_dict=fd)
+            fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
 
-        for _ in range(1):
-            _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
+            for _ in range(10):
+                _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
 
-        if it % 100 == 0:
-            print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-                  .format(it, gloss0, gloss1))
-            print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
+            gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
+                                            JagNet_MM.loss_gen1,
+                                            JagNet_MM.loss_adv],
+                                            feed_dict=fd)
+
+            for _ in range(1):
+                _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
+
+            if it % 100 == 0:
+                print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
+                    .format(it, gloss0, gloss1))
+                print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
 
 
-        if it % 500 == 0:
+            if it % 500 == 0:
 
-            nTest=16
-            x_test_mb = X_test[-nTest:,:]
-            summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
+                nTest=16
+                x_test_mb = X_test[-nTest:,:]
+                summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
 
-            writer.add_summary(summary_val, it)
+                writer.add_summary(summary_val, it)
 
-            samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
-                                           feed_dict={x: x_test_mb,train_mode:False})
-            data_dict= {}
-            data_dict['samples'] = samples
-            data_dict['samples_x'] = samples_x
-            data_dict['y_sca'] = y_sca_test
-            data_dict['y_img'] = y_img_test
-            data_dict['x'] = x_test_mb
+                samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
+                                            feed_dict={x: x_test_mb,train_mode:False})
+                data_dict= {}
+                data_dict['samples'] = samples
+                data_dict['samples_x'] = samples_x
+                data_dict['y_sca'] = y_sca_test
+                data_dict['y_img'] = y_img_test
+                data_dict['x'] = x_test_mb
 
-            test_imgs_plot(fdir,it,data_dict)
+                test_imgs_plot(fdir,it,data_dict)
 
-            save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
+                save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
 
 if __name__=='__main__':
     run()

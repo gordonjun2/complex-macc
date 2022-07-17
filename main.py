@@ -22,6 +22,8 @@ parser.add_argument('-d', type=str, default='./data/icf-jag-10k/',
                     help='path to dataset - images, scalars, and input params')
 parser.add_argument('--complex_mode', action='store_true',
                     help='option to use non-complex and complex images')
+parser.add_argument('--split_n', default=4, type=int, 
+                    help='split training data into split_n parts to reduce memory usage')
 
 args = parser.parse_args()
 fdir = args.o
@@ -29,6 +31,7 @@ mdir = args.m
 ae_dir = args.ae_dir
 datapath = args.d
 complex_mode = args.complex_mode
+split_n = args.split_n
 
 ae_dir = 'wae_metric/ae_model_'+mdir
 ae_dir_outs = 'wae_metric/ae_outs'
@@ -38,10 +41,10 @@ surrogate_dir_outs = './surrogate_outs'
 
 if args.train_ae:
     print('****** Training the autoencoder *******')
-    metric.run(fdir=ae_dir_outs,modeldir=ae_dir,datapath=datapath, complex_mode=complex_mode)
+    metric.run(fdir=ae_dir_outs,modeldir=ae_dir,datapath=datapath, complex_mode=complex_mode, split_n = split_n)
     print('****** Training the macc surrogate *******')
     # cycGAN.run(fdir,mdir,ae_dir)
-    cycGAN.run(fdir=surrogate_dir_outs,modeldir=surrogate_dir,ae_dir=ae_dir,datapath=datapath, complex_mode=complex_mode)
+    cycGAN.run(fdir=surrogate_dir_outs,modeldir=surrogate_dir,ae_dir=ae_dir,datapath=datapath, complex_mode=complex_mode, split_n = split_n)
 else:
     print('****** Training the macc surrogate with pre-trained autoencoder *******')
-    cycGAN.run(fdir=surrogate_dir_outs,modeldir=surrogate_dir,ae_dir=ae_dir,datapath=datapath, complex_mode=complex_mode)
+    cycGAN.run(fdir=surrogate_dir_outs,modeldir=surrogate_dir,ae_dir=ae_dir,datapath=datapath, complex_mode=complex_mode, split_n = split_n)

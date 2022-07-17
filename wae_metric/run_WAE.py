@@ -47,12 +47,15 @@ def run(**kwargs):
     lam = kwargs.get('lam',1e-4)
     dim_z = kwargs.get('dimz',LATENT_SPACE_DIM)
     complex_mode = kwargs.get('complex_mode')
+    split_n = kwargs.get('split_n')
 
     # if not os.path.exists(fdir):
     #     os.makedirs(fdir)
 
     if not os.path.exists(modeldir):
         os.makedirs(modeldir)
+
+    print('Loading dataset...')
 
     jag_inp, jag_sca, jag_img = load_dataset(datapath, complex_mode)
     jag = np.hstack((jag_img,jag_sca))
@@ -61,20 +64,40 @@ def run(**kwargs):
     tr_id = np.random.choice(jag.shape[0],int(jag.shape[0]*0.95),replace=False)
     te_id = list(set(range(jag.shape[0])) - set(tr_id))
 
-      = jag[tr_id,:]
-    y_train = jag[tr_id,:]
+    # X_train  = jag[tr_id,:]             # same variable for y_train
+    # # y_train = jag[tr_id,:]
 
+    print('Splitting dataset indexes...')
 
-    X_test_set = jag[te_id,:]
-    y_test_set = jag[te_id,:]
+    sub_X_train_len = len(tr_id)/split_n
+
+    if sub_X_train_len % 1 == 0:
+        sub_X_train_len = int(sub_X_train_len)
+        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] for i in range(sub_X_train_len)]
+    else:
+        sub_X_train_len = len(tr_id)//split_n
+        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(sub_X_train_len+1)]
+    
+    X_test_set = jag[te_id,:]           # same variable for y_test_set
+    # y_test_set = jag[te_id,:]
 
     batch_size = 100
+
+    if batch_size > sub_X_train_len:
+        batch_size = sub_X_train_len
+
+    print('Batch Size: ', batch_size)
+
+    print('Initialising model...')
 
     dim_image = jag.shape[1]
 
 
     # Image  to Image
-    y = tf.placeholder(tf.float32, shape=[None, dim_image])
+    if complex_mode:
+        y = tf.placeholder(tf.complex64, shape=[None, dim_image])
+    else:
+        y = tf.placeholder(tf.float32, shape=[None, dim_image])
     z = tf.placeholder(tf.float32, shape=[None, dim_z])
     train_mode = tf.placeholder(tf.bool,name='train_mode')
 
@@ -127,38 +150,43 @@ def run(**kwargs):
         saver.restore(sess, ckpt.model_checkpoint_path)
         print("************ Model restored! **************")
 
+    print('Training starts...')
 
-    for it in range(0,100000):
-        randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
-        y_mb = X_train[randid,:]
-        X_mb = X_train[randid,:]
+    for tr_id in tr_id_split:
+        X_train  = jag[tr_id,:]
+        for it in range(0,100000//split_n):
+            if len(X_train) < batch_size:
+                batch_size = len(X_train)
+            randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+            y_mb = X_train[randid,:]
+            X_mb = X_train[randid,:]
 
 
-        z_mb = sample_z(batch_size,dim_z)
+            z_mb = sample_z(batch_size,dim_z)
 
-        fd = {y:y_mb, train_mode: True,z:z_mb}
-        for i in range(1):
-            _, G_loss_curr,tmp1,tmp2 = sess.run([G_solver, G_loss,rec_error,gen_error],
-                                    feed_dict=fd)
-        for i in range(1):
-            _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict=fd)
+            fd = {y:y_mb, train_mode: True,z:z_mb}
+            for i in range(1):
+                _, G_loss_curr,tmp1,tmp2 = sess.run([G_solver, G_loss,rec_error,gen_error],
+                                        feed_dict=fd)
+            for i in range(1):
+                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict=fd)
 
-        if (it+1) % 100 ==0:
-            summary = sess.run(merged,feed_dict=fd)
-            writer.add_summary(summary, it)
+            if (it+1) % 100 ==0:
+                summary = sess.run(merged,feed_dict=fd)
+                writer.add_summary(summary, it)
 
-        if (it+1) % 1000 == 0:
-            print('Iter: {}; Recon_Error = : {:.4}, G_Loss: {:.4}; D_Loss: {:.4}'
-                  .format(it+1, tmp1, tmp2, D_loss_curr))
+            if (it+1) % 1000 == 0:
+                print('Iter: {}; Recon_Error = : {:.4}, G_Loss: {:.4}; D_Loss: {:.4}'
+                    .format(it+1, tmp1, tmp2, D_loss_curr))
 
-            z_test = sample_z(len(te_id),dim_z)
-            fd = {train_mode:False, y:X_test_set, z:z_test}
-            samples,summary_val = sess.run([y_recon,merged],feed_dict=fd)
+                z_test = sample_z(len(te_id),dim_z)
+                fd = {train_mode:False, y:X_test_set, z:z_test}
+                samples,summary_val = sess.run([y_recon,merged],feed_dict=fd)
 
-            writer_test.add_summary(summary_val, it)
+                writer_test.add_summary(summary_val, it)
 
-        if (it+1)%1000==0:
-            save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
+            if (it+1)%1000==0:
+                save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
     return
 
 
