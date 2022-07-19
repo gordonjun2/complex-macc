@@ -59,10 +59,10 @@ def run(**kwargs):
 
     if sub_X_train_len % 1 == 0:
         sub_X_train_len = int(sub_X_train_len)
-        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] for i in range(sub_X_train_len)]
+        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] for i in range(split_n)]
     else:
         sub_X_train_len = len(tr_id)//split_n
-        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(sub_X_train_len+1)]
+        tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(split_n+1)]
 
     if batch_size > sub_X_train_len:
         batch_size = sub_X_train_len
@@ -171,69 +171,18 @@ def run(**kwargs):
 
     print('Training starts...')
 
-    if complex_mode:
+    # if complex_mode:
 
-        it_total = 0
+    it_total = 0
 
-        for tr_id in tr_id_split:
-            X_train = jag_inp[tr_id,:]
-            y_sca_train = jag_sca[tr_id,:]
-            y_img_train = jag_img[tr_id,:]
-            for it in range(100000//split_n):
+    for tr_id in tr_id_split:
+        X_train = jag_inp[tr_id,:]
+        y_sca_train = jag_sca[tr_id,:]
+        y_img_train = jag_img[tr_id,:]
+        for it in range(100000//split_n):
 
-                if len(X_train) < batch_size:
-                    batch_size = len(X_train)
-
-                randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
-                x_mb = X_train[randid,:]
-                y_img_mb = y_img_train[randid,:]
-                y_sca_mb = y_sca_train[randid,:]
-
-                fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
-
-                for _ in range(10):
-                    _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
-
-                gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
-                                                JagNet_MM.loss_gen1,
-                                                JagNet_MM.loss_adv],
-                                                feed_dict=fd)
-
-                for _ in range(1):
-                    _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
-
-                if it_total % 100 == 0:
-                    print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-                        .format(it_total, gloss0, gloss1))
-                    print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
-
-
-                if it_total % 500 == 0:
-
-                    nTest=16
-                    x_test_mb = X_test[-nTest:,:]
-                    summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
-
-                    writer.add_summary(summary_val, it_total)
-
-                    samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
-                                                feed_dict={x: x_test_mb,train_mode:False})
-                    data_dict= {}
-                    data_dict['samples'] = samples
-                    data_dict['samples_x'] = samples_x
-                    data_dict['y_sca'] = y_sca_test
-                    data_dict['y_img'] = y_img_test
-                    data_dict['x'] = x_test_mb
-
-                    test_imgs_plot(fdir,it_total,data_dict)
-
-                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
-
-                it_total = it_total + 1
-
-    else:
-
-        for it in range(100000):
+            if len(X_train) < batch_size:
+                batch_size = len(X_train)
 
             randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
             x_mb = X_train[randid,:]
@@ -253,19 +202,19 @@ def run(**kwargs):
             for _ in range(1):
                 _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
 
-            if it % 100 == 0:
+            if it_total % 100 == 0:
                 print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-                    .format(it, gloss0, gloss1))
+                    .format(it_total, gloss0, gloss1))
                 print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
 
 
-            if it % 500 == 0:
+            if it_total % 500 == 0:
 
                 nTest=16
                 x_test_mb = X_test[-nTest:,:]
                 summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
 
-                writer.add_summary(summary_val, it)
+                writer.add_summary(summary_val, it_total)
 
                 samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
                                             feed_dict={x: x_test_mb,train_mode:False})
@@ -276,9 +225,60 @@ def run(**kwargs):
                 data_dict['y_img'] = y_img_test
                 data_dict['x'] = x_test_mb
 
-                test_imgs_plot(fdir,it,data_dict)
+                test_imgs_plot(fdir,it_total,data_dict)
 
-                save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
+                save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+
+            it_total = it_total + 1
+
+    # else:
+
+    #     for it in range(100000):
+
+    #         randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+    #         x_mb = X_train[randid,:]
+    #         y_img_mb = y_img_train[randid,:]
+    #         y_sca_mb = y_sca_train[randid,:]
+
+    #         fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
+
+    #         for _ in range(10):
+    #             _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
+
+    #         gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
+    #                                         JagNet_MM.loss_gen1,
+    #                                         JagNet_MM.loss_adv],
+    #                                         feed_dict=fd)
+
+    #         for _ in range(1):
+    #             _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
+
+    #         if it % 100 == 0:
+    #             print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
+    #                 .format(it, gloss0, gloss1))
+    #             print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
+
+
+    #         if it % 500 == 0:
+
+    #             nTest=16
+    #             x_test_mb = X_test[-nTest:,:]
+    #             summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
+
+    #             writer.add_summary(summary_val, it)
+
+    #             samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
+    #                                         feed_dict={x: x_test_mb,train_mode:False})
+    #             data_dict= {}
+    #             data_dict['samples'] = samples
+    #             data_dict['samples_x'] = samples_x
+    #             data_dict['y_sca'] = y_sca_test
+    #             data_dict['y_img'] = y_img_test
+    #             data_dict['x'] = x_test_mb
+
+    #             test_imgs_plot(fdir,it,data_dict)
+
+    #             save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
 
 if __name__=='__main__':
     run()
