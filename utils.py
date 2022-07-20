@@ -230,7 +230,7 @@ def plot(samples,immax=None,immin=None):
             plt.imshow(sample.reshape(IMAGE_SIZE, IMAGE_SIZE), cmap='winter',vmax=immax[i],vmin=immin[i])
     return fig
 
-def test_imgs_plot(fdir,batch,data_dict):
+def test_imgs_plot(fdir,batch,data_dict, complex_mode):
     i = batch
     samples = data_dict['samples']
     samples_x = data_dict['samples_x']
@@ -251,10 +251,24 @@ def test_imgs_plot(fdir,batch,data_dict):
                 .format(fdir,str(i).zfill(3)), bbox_inches='tight')
     plt.close()
 
-    fig = plot(samples_y_img_plot,immax=np.max(y_img_test_mb,axis=1),immin=np.min(y_img_test_mb,axis=1))
-    plt.savefig('{}/y_img_{}_{}.png'
-                .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
-    plt.close()
+    if complex_mode:
+        # Real
+        fig = plot(np.real(samples_y_img_plot),immax=np.max(np.real(y_img_test_mb),axis=1),immin=np.min(np.real(y_img_test_mb),axis=1))
+        plt.savefig('{}/y_img_{}_{}.png'
+                    .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
+        plt.close()
+
+        # Imaginary
+        fig = plot(np.imag(samples_y_img_plot),immax=np.max(np.imag(y_img_test_mb),axis=1),immin=np.min(np.imag(y_img_test_mb),axis=1))
+        plt.savefig('{}/y_img_{}_{}.png'
+                    .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
+        plt.close()
+
+    else:
+        fig = plot(samples_y_img_plot,immax=np.max(y_img_test_mb,axis=1),immin=np.min(y_img_test_mb,axis=1))
+        plt.savefig('{}/y_img_{}_{}.png'
+                    .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
+        plt.close()
 
     fig = plot_line(samples_x,x_test_mb,bar=False)
     plt.savefig('{}/x_{}.png'

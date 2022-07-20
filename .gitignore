@@ -1,6 +1,7 @@
 *.pyc
 *.npy
 out/
+surrogate_model_weights/
 surrogate_outs/
 tensorboard_plots/
 test_graphs/

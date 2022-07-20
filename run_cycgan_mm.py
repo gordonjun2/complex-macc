@@ -64,6 +64,8 @@ def run(**kwargs):
         sub_X_train_len = len(tr_id)//split_n
         tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(split_n+1)]
 
+    batch_size = 64
+
     if batch_size > sub_X_train_len:
         batch_size = sub_X_train_len
 
@@ -83,11 +85,26 @@ def run(**kwargs):
     y_img_test_mb = y_img_test_mb.reshape(16,64,64,4)
 
     for k in range(4):
-        fig = plot(y_img_test_mb[:,:,:,k],immax=np.max(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1),
-                   immin=np.min(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1))
-        plt.savefig('{}/gt_img_{}_{}.png'
-                    .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
-        plt.close()
+        if complex_mode:
+            # Real part
+            fig = plot(np.real(y_img_test_mb[:,:,:,k]),immax=np.max(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
+                    immin=np.min(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
+            plt.savefig('{}/gt_img_{}_{}.png'
+                        .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
+            plt.close()
+
+            # Imaginary part
+            fig = plot(np.imag(y_img_test_mb[:,:,:,k]),immax=np.max(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
+                    immin=np.min(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
+            plt.savefig('{}/gt_img_{}_{}.png'
+                        .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
+            plt.close()
+        else:
+            fig = plot(y_img_test_mb[:,:,:,k],immax=np.max(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1),
+                    immin=np.min(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1))
+            plt.savefig('{}/gt_img_{}_{}.png'
+                        .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
+            plt.close()
 
 
 
@@ -106,10 +123,11 @@ def run(**kwargs):
 
     print('Initialising model...')
 
-    y_sca = tf.placeholder(tf.float32, shape=[None, dim_y_sca])
     if complex_mode:
+        y_sca = tf.placeholder(tf.complex64, shape=[None, dim_y_sca])
         y_img = tf.placeholder(tf.complex64, shape=[None, dim_y_img])
     else:
+        y_sca = tf.placeholder(tf.float32, shape=[None, dim_y_sca])
         y_img = tf.placeholder(tf.float32, shape=[None, dim_y_img])
     x = tf.placeholder(tf.float32, shape=[None, dim_x])
     train_mode = tf.placeholder(tf.bool,name='train_mode')
@@ -225,7 +243,7 @@ def run(**kwargs):
                 data_dict['y_img'] = y_img_test
                 data_dict['x'] = x_test_mb
 
-                test_imgs_plot(fdir,it_total,data_dict)
+                test_imgs_plot(fdir,it_total,data_dict, complex_mode)
 
                 save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
 
