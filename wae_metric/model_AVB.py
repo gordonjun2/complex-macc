@@ -12,7 +12,7 @@ def xavier_init(size,name=None):
     return tf.random_normal(shape=size, stddev=xavier_stddev,name=name)
 
 '''FCN Encoder'''
-def gen_encoder_FCN(x, n_output, train_mode, complex_mode=False, reuse=False):
+def gen_encoder_FCN(x, n_output, train_mode, reuse=False, complex_mode=False):
     n_hidden = [32,256,128]
     # n_hidden = [1024,256,32]
 
@@ -45,7 +45,7 @@ def gen_encoder_FCN(x, n_output, train_mode, complex_mode=False, reuse=False):
             h0_real = tf.nn.elu(h0_real)
             h0_imag = tf.nn.elu(h0_imag)
 
-            h0 = h0_real + h0_imag
+            h0 = tf.complex(h0_real, h0_imag)
 
         else:
             # inputs = tf.concat(axis=1, values=[x, eps])
@@ -82,7 +82,7 @@ def gen_encoder_FCN(x, n_output, train_mode, complex_mode=False, reuse=False):
             h1_real = tf.nn.tanh(h1_real)
             h1_imag = tf.nn.tanh(h1_imag)
 
-            h1 = h1_real + h1_imag
+            h1 = tf.complex(h1_real, h1_imag)
         else:
             w1 = tf.get_variable('w1', [h0.get_shape()[1], n_hidden[1]], initializer=w_init)
             b1 = tf.get_variable('b1', [n_hidden[1]], initializer=b_init)
@@ -115,7 +115,7 @@ def gen_encoder_FCN(x, n_output, train_mode, complex_mode=False, reuse=False):
             h2_real = tf.nn.tanh(h2_real)
             h2_imag = tf.nn.tanh(h2_imag)
 
-            h2 = h2_real + h2_imag
+            h2 = tf.complex(h2_real, h2_imag)
 
         else:
             w2 = tf.get_variable('w2', [h1.get_shape()[1], n_hidden[2]], initializer=w_init)
@@ -152,7 +152,7 @@ def gen_encoder_FCN(x, n_output, train_mode, complex_mode=False, reuse=False):
     return z
 
 
-def var_decoder_FCN(z, n_output, train_mode, complex_mode=False, reuse=False):
+def var_decoder_FCN(z, n_output, train_mode, reuse=False, complex_mode=False):
     n_hidden = [64,128,256]
     # n_hidden = [32,256,1024]
     with tf.variable_scope("wae_decoder", reuse=reuse):
@@ -187,7 +187,7 @@ def var_decoder_FCN(z, n_output, train_mode, complex_mode=False, reuse=False):
             h0_real = tf.nn.elu(h0_real)
             h0_imag = tf.nn.elu(h0_imag)
 
-            h0 = h0_real + h0_imag
+            h0 = tf.complex(h0_real, h0_imag)
 
         else:
             dw0 = tf.get_variable('dw0', [z.get_shape()[1], n_hidden[0]], initializer=w_init)
@@ -224,7 +224,7 @@ def var_decoder_FCN(z, n_output, train_mode, complex_mode=False, reuse=False):
             h1_real = tf.nn.tanh(h1_real)
             h1_imag = tf.nn.tanh(h1_imag)
 
-            h1 = h1_real + h1_imag
+            h1 = tf.complex(h1_real, h1_imag)
 
         else:
             w1 = tf.get_variable('w1', [h0.get_shape()[1], n_hidden[1]], initializer=w_init)
@@ -261,7 +261,7 @@ def var_decoder_FCN(z, n_output, train_mode, complex_mode=False, reuse=False):
             h2_real = tf.nn.tanh(h2_real)
             h2_imag = tf.nn.tanh(h2_imag)
 
-            h2 = h2_real + h2_imag
+            h2 = tf.complex(h2_real, h2_imag)
 
         else:
             w2 = tf.get_variable('w2', [h1.get_shape()[1], n_hidden[2]], initializer=w_init)
@@ -333,7 +333,7 @@ def discriminator_FCN(x, z, r=None, complex_mode=False):
             h1_real = tf.nn.leaky_relu(h1_real)
             h1_imag = tf.nn.leaky_relu(h1_imag)
 
-            h1 = h1_real + h1_imag
+            h1 = tf.complex(h1_real, h1_imag)
 
 
             h1_real = tf.real(h1)
@@ -359,7 +359,7 @@ def discriminator_FCN(x, z, r=None, complex_mode=False):
             h2_real = tf.nn.leaky_relu(h2_real)
             h2_imag = tf.nn.leaky_relu(h2_imag)
 
-            h2 = h2_real + h2_imag
+            h2 = tf.complex(h2_real, h2_imag)
 
 
             h2_real = tf.real(h2)
@@ -385,7 +385,7 @@ def discriminator_FCN(x, z, r=None, complex_mode=False):
             h3_real = tf.nn.leaky_relu(h3_real)
             h3_imag = tf.nn.leaky_relu(h3_imag)
 
-            h3 = h3_real + h3_imag
+            h3 = tf.complex(h3_real, h3_imag)
 
 
             h3_real = tf.real(h3)
@@ -411,7 +411,7 @@ def discriminator_FCN(x, z, r=None, complex_mode=False):
             h4_real = tf.nn.leaky_relu(h4_real)
             h4_imag = tf.nn.leaky_relu(h4_imag)
 
-            h4 = h4_real + h4_imag
+            h4 = tf.complex(h4_real, h4_imag)
 
 
             h4_real = tf.real(h4)

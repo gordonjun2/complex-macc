@@ -31,7 +31,7 @@ def run(**kwargs):
     fdir = kwargs.get('fdir', './surrogate_outs')
     modeldir = kwargs.get('modeldir','./pretrained_model')
     ae_path = kwargs.get('ae_dir','./wae_metric/pretrained_model')
-    datapath = kwargs.get('datapath','./data/')
+    datapath = kwargs.get('datapath','./data/icf-jag-10k/')
 
     visdir = './tensorboard_plots'
     if not os.path.exists(fdir):
@@ -77,8 +77,12 @@ def run(**kwargs):
 
     np.random.shuffle(te_id)
 
-    X_test = jag_inp[te_id,:]
-    y_sca_test = jag_sca[te_id,:]
+    if complex_mode:
+        X_test = np.complex64(jag_inp[te_id,:])
+        y_sca_test = np.complex64(jag_sca[te_id,:])
+    else:
+        X_test = jag_inp[te_id,:]
+        y_sca_test = jag_sca[te_id,:]
     y_img_test = jag_img[te_id,:]
     y_img_test_mb = y_img_test[-16:,:]
 
@@ -126,23 +130,25 @@ def run(**kwargs):
     if complex_mode:
         y_sca = tf.placeholder(tf.complex64, shape=[None, dim_y_sca])
         y_img = tf.placeholder(tf.complex64, shape=[None, dim_y_img])
+        x = tf.placeholder(tf.complex64, shape=[None, dim_x])
     else:
         y_sca = tf.placeholder(tf.float32, shape=[None, dim_y_sca])
         y_img = tf.placeholder(tf.float32, shape=[None, dim_y_img])
-    x = tf.placeholder(tf.float32, shape=[None, dim_x])
+        x = tf.placeholder(tf.float32, shape=[None, dim_x])
+
     train_mode = tf.placeholder(tf.bool,name='train_mode')
 
     y_mm = tf.concat([y_img,y_sca],axis=1)
 
     '''**** Encode the img, scalars ground truth --> latent vector for loss computation ****'''
     # Using the pretrained encoder from pretrained Multi-modal Wasserstein Autoencoder
-    y_latent_img = wae.gen_encoder_FCN(y_mm, dim_y_img_latent, False, complex_mode)
+    y_latent_img = wae.gen_encoder_FCN(y_mm, dim_y_img_latent, train_mode = False, reuse = False, complex_mode = complex_mode)
 
     '''**** Train cycleGAN input params <--> latent space of (images, scalars) ****'''
 
     cycGAN_params = {'input_params':x,
-                     'outputs':y_latent_img,
                      'param_dim':dim_x,
+                     'outputs':y_latent_img,
                      'output_dim':dim_y_img_latent,
                      'L_adv':1e-2,
                      'L_cyc':1e-1,
@@ -153,7 +159,7 @@ def run(**kwargs):
 
     '''**** Decode the prediction from latent vector --> img, scalars ****'''
     # Using the pretrained decoder from pretrained Multi-modal Wasserstein Autoencoder
-    y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca, False, complex_mode)
+    y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca, train_mode = False, reuse = False, complex_mode = complex_mode)
 
     if complex_mode:
         img_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out[:,:16384] - y_img)))
@@ -194,13 +200,17 @@ def run(**kwargs):
     it_total = 0
 
     for tr_id in tr_id_split:
-        X_train = jag_inp[tr_id,:]
-        y_sca_train = jag_sca[tr_id,:]
+        if complex_mode:
+            X_train = np.complex64(jag_inp[tr_id,:])
+            y_sca_train = np.complex64(jag_sca[tr_id,:])
+        else:
+            X_train = jag_inp[tr_id,:]
+            y_sca_train = jag_sca[tr_id,:]
         y_img_train = jag_img[tr_id,:]
         for it in range(100000//split_n):
 
-            if len(X_train) < batch_size:
-                batch_size = len(X_train)
+            if X_train.shape[0] < batch_size:
+                batch_size = X_train.shape[0]
 
             randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
             x_mb = X_train[randid,:]

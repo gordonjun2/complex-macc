@@ -96,9 +96,10 @@ def run(**kwargs):
     # Image  to Image
     if complex_mode:
         y = tf.placeholder(tf.complex64, shape=[None, dim_image])
+        z = tf.placeholder(tf.complex64, shape=[None, dim_z])
     else:
         y = tf.placeholder(tf.float32, shape=[None, dim_image])
-    z = tf.placeholder(tf.float32, shape=[None, dim_z])
+        z = tf.placeholder(tf.float32, shape=[None, dim_z])
     train_mode = tf.placeholder(tf.bool,name='train_mode')
 
     # Model initialisation
@@ -159,8 +160,8 @@ def run(**kwargs):
     for tr_id in tr_id_split:
         X_train  = jag[tr_id,:]
         for it in range(0,100000//split_n):
-            if len(X_train) < batch_size:
-                batch_size = len(X_train)
+            if X_train.shape[0] < batch_size:
+                batch_size = X_train.shape[0]
             randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
             y_mb = X_train[randid,:]
             X_mb = X_train[randid,:]

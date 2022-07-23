@@ -143,10 +143,21 @@ def conv1d(x,W,strides=1,act='relu'):
     return h
 
 def bn(x,is_training,name):
-    return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=is_training,
-    reuse=None,
-    trainable=True,
-    scope=name)
+    if is_training:
+        return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=is_training,
+        reuse=None,
+        trainable=True,
+        scope=name)
+    else:
+        # is_training = True (forced), trainable = False
+        # If is_training = False instead, there will be NaN if complex_mode is being used. Not sure why ...
+        # Note: Normalization is performed using the mean and variance of the minibatch for Tensorflow 1.* version (to be used).
+        #       For Tensorflow 2.* version, sliding mean and sliding variance is used instead.
+        #       Either way, as long as trainable = False, batch normalization layer if freezed.
+        return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=True,
+        reuse=None,
+        trainable=False,
+        scope=name)
 
 def batch_norm_custom(x, n_out, phase_train, scope='bn', decay=0.99, eps=1e-5,reuse=None):
 

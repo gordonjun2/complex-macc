@@ -15,7 +15,10 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from sklearn.preprocessing import MinMaxScaler, scale
 
+import warnings
+
 IMAGE_SIZE = 50
+warnings.filterwarnings('ignore')
 
 
 def log(x):

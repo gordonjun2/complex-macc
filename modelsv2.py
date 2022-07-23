@@ -16,7 +16,7 @@ from utils import *
 
 
 class cycModel_MM(object):
-    def __init__(self,input_params,outputs,param_dim,output_dim,L_adv,L_cyc,L_rec):
+    def __init__(self,input_params,param_dim,outputs,output_dim,L_adv,L_cyc,L_rec):
         '''
         multi-modal cycGAN class
         x: parameters in 11-D
@@ -87,7 +87,7 @@ class cycModel_MM(object):
                 D_relu1_real = tf.nn.leaky_relu(h_fc1_real)
                 D_relu1_imag = tf.nn.leaky_relu(h_fc1_imag)
 
-                D_relu1 = D_relu1_real + D_relu1_imag
+                D_relu1 = tf.complex(D_relu1_real, D_relu1_imag)
 
 
                 D_relu1_real = tf.real(D_relu1)
@@ -112,7 +112,7 @@ class cycModel_MM(object):
                 D_relu2_real = tf.nn.leaky_relu(h_fc2_real)
                 D_relu2_imag = tf.nn.leaky_relu(h_fc2_imag)
 
-                D_relu2 = D_relu2_real + D_relu2_imag   
+                D_relu2 = tf.complex(D_relu2_real, D_relu2_imag)   
 
 
                 D_relu2_real = tf.real(D_relu2)
@@ -137,7 +137,7 @@ class cycModel_MM(object):
                 D_relu4_real = tf.nn.leaky_relu(h_fc4_real)
                 D_relu4_imag = tf.nn.leaky_relu(h_fc4_imag)
 
-                D_relu4 = D_relu4_real + D_relu4_imag   
+                D_relu4 = tf.complex(D_relu4_real, D_relu4_imag)   
 
 
                 D_relu4_real = tf.real(D_relu4)
@@ -241,7 +241,7 @@ class cycModel_MM(object):
                 G_relu1_real = tf.nn.relu(G1_real)
                 G_relu1_imag = tf.nn.relu(G1_imag)
 
-                G_relu1 = G_relu1_real + G_relu1_imag
+                G_relu1 = tf.complex(G_relu1_real, G_relu1_imag)
 
 
                 G_relu1_real = tf.real(G_relu1)
@@ -266,7 +266,7 @@ class cycModel_MM(object):
                 G_relu2_real = tf.nn.relu(G2_real)
                 G_relu2_imag = tf.nn.relu(G2_imag)
 
-                G_relu2 = G_relu2_real + G_relu2_imag
+                G_relu2 = tf.complex(G_relu2_real, G_relu2_imag)
 
 
                 G_relu2_real = tf.real(G_relu2)
@@ -291,7 +291,7 @@ class cycModel_MM(object):
                 G_relu3_real = tf.nn.relu(G3_real)
                 G_relu3_imag = tf.nn.relu(G3_imag)
 
-                G_relu3 = G_relu3_real + G_relu3_imag
+                G_relu3 = tf.complex(G_relu3_real, G_relu3_imag)
 
 
                 G_relu3_real = tf.real(G_relu3)
@@ -374,7 +374,7 @@ class cycModel_MM(object):
                 G_relu1_real = tf.nn.relu(h_fc1_real)
                 G_relu1_imag = tf.nn.relu(h_fc1_imag)
 
-                G_relu1 = G_relu1_real + G_relu1_imag
+                G_relu1 = tf.complex(G_relu1_real, G_relu1_imag)
 
 
                 G_relu1_real = tf.real(G_relu1)
@@ -399,7 +399,7 @@ class cycModel_MM(object):
                 G_relu2_real = tf.nn.relu(h_fc2_real)
                 G_relu2_imag = tf.nn.relu(h_fc2_imag)
 
-                G_relu2 = G_relu2_real + G_relu2_imag
+                G_relu2 = tf.complex(G_relu2_real, G_relu2_imag)
 
 
                 G_relu2_real = tf.real(G_relu2)
@@ -424,7 +424,7 @@ class cycModel_MM(object):
                 G_relu3_real = tf.nn.relu(h_fc3_real)
                 G_relu3_imag = tf.nn.relu(h_fc3_imag)
 
-                G_relu3 = G_relu3_real + G_relu3_imag
+                G_relu3 = tf.complex(G_relu3_real, G_relu3_imag)
 
 
                 G_relu3_real = tf.real(G_relu3)
@@ -446,7 +446,7 @@ class cycModel_MM(object):
                 h_fc4_real = bn(real_out, train_mode,"G_bn4_real")
                 h_fc4_imag = bn(imag_out, train_mode,"G_bn4_imag")
 
-                out = h_fc4_real + h_fc4_imag
+                out = tf.complex(h_fc4_real, h_fc4_imag)
 
             else:
                 G_W1 = weight_variable([x_dim, 16],name="G_W1")
