@@ -154,7 +154,8 @@ def bn(x,is_training,name):
         # Note: Normalization is performed using the mean and variance of the minibatch for Tensorflow 1.* version (to be used).
         #       For Tensorflow 2.* version, sliding mean and sliding variance is used instead.
         #       (https://blog.csdn.net/Strive_For_Future/article/details/115243512)
-        #       Either way, as long as trainable = False, batch normalization layer if freezed.
+        #       Either way, as long as trainable = False, batch normalization layer is freezed.
+        #       However, the original intention of the authors is to use sliding mean and sliding variance ...
         return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=True,
         reuse=None,
         trainable=False,
