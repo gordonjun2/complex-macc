@@ -153,6 +153,7 @@ def bn(x,is_training,name):
         # If is_training = False instead, there will be NaN if complex_mode is being used. Not sure why ...
         # Note: Normalization is performed using the mean and variance of the minibatch for Tensorflow 1.* version (to be used).
         #       For Tensorflow 2.* version, sliding mean and sliding variance is used instead.
+        #       (https://blog.csdn.net/Strive_For_Future/article/details/115243512)
         #       Either way, as long as trainable = False, batch normalization layer if freezed.
         return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=True,
         reuse=None,
