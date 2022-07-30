@@ -46,6 +46,11 @@ def run(**kwargs):
     complex_mode = kwargs.get('complex_mode')
     split_n = kwargs.get('split_n')
 
+    if complex_mode:
+        print('Complex Mode is selected...')
+    else:
+        print('Non-complex Mode is selected...')
+
     print('Loading dataset...')
 
     jag_inp, jag_sca, jag_img = load_dataset(datapath, complex_mode)

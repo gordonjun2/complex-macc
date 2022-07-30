@@ -143,23 +143,10 @@ def conv1d(x,W,strides=1,act='relu'):
     return h
 
 def bn(x,is_training,name):
-    if is_training:
-        return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=is_training,
-        reuse=None,
-        trainable=True,
-        scope=name)
-    else:
-        # is_training = True (forced), trainable = False
-        # If is_training = False instead, there will be NaN if complex_mode is being used. Not sure why ...
-        # Note: Normalization is performed using the mean and variance of the minibatch for Tensorflow 1.* version (to be used).
-        #       For Tensorflow 2.* version, sliding mean and sliding variance is used instead.
-        #       (https://blog.csdn.net/Strive_For_Future/article/details/115243512)
-        #       Either way, as long as trainable = False, batch normalization layer is freezed.
-        #       However, the original intention of the authors is to use sliding mean and sliding variance ...
-        return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=True,
-        reuse=None,
-        trainable=False,
-        scope=name)
+    return batch_norm(x, decay=0.9, center=True, scale=True,updates_collections=None,is_training=is_training,
+    reuse=None,
+    trainable=True,
+    scope=name)
 
 def batch_norm_custom(x, n_out, phase_train, scope='bn', decay=0.99, eps=1e-5,reuse=None):
 
@@ -261,10 +248,27 @@ def compute_adv_loss(D_real,D_fake,complex_mode):
         G_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_fake, labels=tf.ones_like(D_fake)))
     return D_loss,G_adv
 
+# def plot(samples,immax=None,immin=None):
+#     # plt.rcParams["figure.figsize"] = (10,10)
+#     fig = plt.figure(figsize=(4, 4))
+#     gs = gridspec.GridSpec(4, 4)
+#     gs.update(wspace=0.05, hspace=0.05)
+
+#     for i, sample in enumerate(samples):
+#         ax = plt.subplot(gs[i])
+#         plt.axis('off')
+#         ax.set_xticklabels([])
+#         ax.set_yticklabels([])
+#         ax.set_aspect('equal')
+#         if immax is not None:
+#             plt.imshow(sample.reshape(64, 64), cmap='winter',vmax=immax[i],vmin=immin[i])
+#     return fig
+
 def plot(samples,immax=None,immin=None):
     # plt.rcParams["figure.figsize"] = (10,10)
-    fig = plt.figure(figsize=(4, 4))
-    gs = gridspec.GridSpec(4, 4)
+    IMAGE_SIZE = 64
+    fig = plt.figure(figsize=(20, 20))
+    gs = gridspec.GridSpec(10, 10)
     gs.update(wspace=0.05, hspace=0.05)
 
     for i, sample in enumerate(samples):
@@ -274,25 +278,98 @@ def plot(samples,immax=None,immin=None):
         ax.set_yticklabels([])
         ax.set_aspect('equal')
         if immax is not None:
-            plt.imshow(sample.reshape(64, 64), cmap='winter',vmax=immax[i],vmin=immin[i])
+            plt.imshow(sample.reshape(IMAGE_SIZE, IMAGE_SIZE), cmap='winter',vmax=immax[i],vmin=immin[i])
     return fig
 
-def plot_line(samples,gt):
+# def plot_line(samples,gt):
 
-    fig = plt.figure(figsize=(10, 10))
-    gs = gridspec.GridSpec(5, 5)
-    gs.update(wspace=0.05, hspace=0.05)
+#     fig = plt.figure(figsize=(10, 10))
+#     gs = gridspec.GridSpec(5, 5)
+#     gs.update(wspace=0.05, hspace=0.05)
+#     #
+#     for i in range(22):
+#         ax = plt.subplot(gs[i])
+#         plt.scatter(gt[:,i],samples[:,i],s=2)
+#     #     plt.plot(gt[i,:],'b')
+#         ax.set_xticklabels([])
+#         ax.set_yticklabels([])
+#     return fig
+
+
+def plot_line(samples,gt,bar=True):
+    # plt.rcParams["figure.figsize"] = (10,20)
+    if bar :
+        fig = plt.figure(figsize=(20, 20))
+    else:
+        fig = plt.figure(figsize=(20, 20))
+
     #
-    for i in range(22):
-        ax = plt.subplot(gs[i])
-        plt.scatter(gt[:,i],samples[:,i],s=2)
-    #     plt.plot(gt[i,:],'b')
+    width=0.35
+    params = ['stopping_mult', 'radiation_mult', 'ablation_cv', 'Vi',
+              'conduction_mult', 'shape_model_initial_velocity_amplitude',
+               'shape_model_initial_velocities:(1, 0)',
+                'shape_model_initial_velocities:(1, 1)',
+                 'shape_model_initial_velocities:(2, 0)',
+                  'shape_model_initial_velocities:(2, 1)',
+                   'shape_model_initial_velocities:(2, 2)']
+    ind = np.arange(len(params))
+
+    for i, sample in enumerate(samples):
+        ax = plt.subplot(10,10,i+1)
         ax.set_xticklabels([])
         ax.set_yticklabels([])
-    return fig
+        if bar:
+            ax.barh(ind,gt[i,:],width,color='red')
+            ax.barh(ind+width,sample,width, color='blue')
+            # plt.yticks(ind ,params,rotation=30)
+            # ax.legend(['GT', 'Pred'])
+        else:
+            plt.plot(gt[i,:])
+            plt.plot(sample,'r.-')
 
+    return fig
 
 def xavier_init(size):
     in_dim = size[0]
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
+
+def ae_test_imgs_plot(fdir,batch,data_dict, complex_mode):
+    i = batch
+    samples = data_dict['samples']
+    y_sca_test = data_dict['y_sca']
+    y_img_test = data_dict['y_img']
+
+    nTest = 100                             # actual test size = samples.shape[0]
+    idx = np.random.choice(range(4),1)
+    y_sca_test_mb = y_sca_test[-nTest:,:]
+    y_img_test_ = y_img_test[-nTest:,:16384]
+    y_img_test_mb = y_img_test_.reshape(-1,64,64,4)[:,:,:,idx].reshape(-1,4096)
+    samples_y_sca = samples[-nTest:,16384:]
+    samples_y_img = samples[-nTest:,:16384].reshape(-1,64,64,4)
+    samples_y_img_plot = samples_y_img[:,:,:,idx]
+    fig = plot_line(samples_y_sca,y_sca_test_mb,bar=False)
+    plt.savefig('{}/y_sca_{}.png'
+                .format(fdir,str(i).zfill(3)), bbox_inches='tight')
+    plt.close()
+
+    if complex_mode:
+        # Real
+        fig = plot(np.real(samples_y_img_plot),immax=np.max(np.real(y_img_test_mb),axis=1),immin=np.min(np.real(y_img_test_mb),axis=1))
+        plt.savefig('{}/y_img_{}_{}.png'
+                    .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
+        plt.close()
+
+        # Imaginary
+        fig = plot(np.imag(samples_y_img_plot),immax=np.max(np.imag(y_img_test_mb),axis=1),immin=np.min(np.imag(y_img_test_mb),axis=1))
+        plt.savefig('{}/y_img_{}_{}.png'
+                    .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
+        plt.close()
+
+    else:
+        fig = plot(samples_y_img_plot,immax=np.max(y_img_test_mb,axis=1),immin=np.min(y_img_test_mb,axis=1))
+        plt.savefig('{}/y_img_{}_{}.png'
+                    .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
+        plt.close()
+
+    return

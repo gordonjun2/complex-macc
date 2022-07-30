@@ -40,14 +40,19 @@ def load_dataset(datapath, complex_mode):
 
 def run(**kwargs):
 
-    fdir = kwargs.get('fdir','./wae_metric/outs')
-    modeldir = kwargs.get('modeldir','./wae_metric/model_weights')
+    fdir = kwargs.get('fdir','./wae_metric/ae_outs')
+    modeldir = kwargs.get('modeldir','./wae_metric/ae_model_weights')
     datapath = kwargs.get('datapath','./data/icf-jag-10k/')
     vizdir = kwargs.get('vizdir','graphs')
     lam = kwargs.get('lam',1e-4)
     dim_z = kwargs.get('dimz',LATENT_SPACE_DIM)
     complex_mode = kwargs.get('complex_mode')
     split_n = kwargs.get('split_n')
+
+    if complex_mode:
+        print('Complex Mode is selected...')
+    else:
+        print('Non-complex Mode is selected...')
 
     # if not os.path.exists(fdir):
     #     os.makedirs(fdir)
@@ -63,6 +68,9 @@ def run(**kwargs):
 
     tr_id = np.random.choice(jag.shape[0],int(jag.shape[0]*0.95),replace=False)
     te_id = list(set(range(jag.shape[0])) - set(tr_id))
+    
+    print('No. of training dataset: ', len(tr_id))
+    print('No. of testing dataset: ', len(te_id))
 
     # X_train  = jag[tr_id,:]             # same variable for y_train
     # # y_train = jag[tr_id,:]
@@ -78,6 +86,8 @@ def run(**kwargs):
         sub_X_train_len = len(tr_id)//split_n
         tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(split_n+1)]
     
+    X_img_test_set = jag_img[te_id,:]
+    X_sca_test_set = jag_sca[te_id,:]
     X_test_set = jag[te_id,:]           # same variable for y_test_set
     # y_test_set = jag[te_id,:]
 
@@ -106,9 +116,9 @@ def run(**kwargs):
 
     # Multi-modal Wasserstein Autoencoder (see architecture in paper)
 
-    z_sample = gen_encoder_FCN(y, dim_z,train_mode, complex_mode)
+    z_sample = gen_encoder_FCN(y, dim_z,train_mode, False, complex_mode)
 
-    y_recon = var_decoder_FCN(z_sample, dim_image,train_mode, complex_mode)
+    y_recon = var_decoder_FCN(z_sample, dim_image,train_mode, False, complex_mode)
 
     # AE Discriminator (architecture not in paper)
 
@@ -188,6 +198,13 @@ def run(**kwargs):
                 samples,summary_val = sess.run([y_recon,merged],feed_dict=fd)
 
                 writer_test.add_summary(summary_val, it_total)
+
+                data_dict= {}
+                data_dict['samples'] = samples
+                data_dict['y_sca'] = X_sca_test_set
+                data_dict['y_img'] = X_img_test_set
+
+                ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode)
 
             if (it_total+1)%10000==0:
                 save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")

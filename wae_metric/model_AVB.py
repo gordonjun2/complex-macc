@@ -295,6 +295,8 @@ def var_decoder_FCN(z, n_output, train_mode, reuse=False, complex_mode=False):
             bout = tf.get_variable('bout', [n_output], initializer=b_init)
             recon = tf.matmul(h2, wout) + bout
 
+        # print_recon = tf.Print(recon, [recon])
+
         return recon
 
 
