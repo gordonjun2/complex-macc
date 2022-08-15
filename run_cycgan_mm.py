@@ -95,27 +95,26 @@ def run(**kwargs):
 
     for k in range(4):
         if complex_mode:
-            # Real part
+            # Real
             fig = plot(np.real(y_img_test_mb[:,:,:,k]),immax=np.max(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
                     immin=np.min(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
-            plt.savefig('{}/gt_img_{}_{}.png'
+            plt.savefig('{}/gt_real_img_{}_{}.png'
                         .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
             plt.close()
 
-            # Imaginary part
+            # Imaginary
             fig = plot(np.imag(y_img_test_mb[:,:,:,k]),immax=np.max(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
                     immin=np.min(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
-            plt.savefig('{}/gt_img_{}_{}.png'
+            plt.savefig('{}/gt_imag_img_{}_{}.png'
                         .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
             plt.close()
+
         else:
             fig = plot(y_img_test_mb[:,:,:,k],immax=np.max(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1),
                     immin=np.min(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1))
             plt.savefig('{}/gt_img_{}_{}.png'
                         .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
             plt.close()
-
-
 
     print("Dataset dimensions: ",X_test.shape,y_sca_test.shape,y_img_test.shape)
     dim_x = jag_inp.shape[1]

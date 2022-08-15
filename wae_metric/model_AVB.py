@@ -142,6 +142,7 @@ def gen_encoder_FCN(x, n_output, train_mode, reuse=False, complex_mode=False):
 
             real_out = tf_real_real - tf_imag_imag
             imag_out = tf_imag_real + tf_real_imag
+
             z = tf.complex(real_out, imag_out)
 
         else:
@@ -288,6 +289,7 @@ def var_decoder_FCN(z, n_output, train_mode, reuse=False, complex_mode=False):
 
             real_out = tf_real_real - tf_imag_imag
             imag_out = tf_imag_real + tf_real_imag
+
             recon = tf.complex(real_out, imag_out)
 
         else:
@@ -327,6 +329,7 @@ def discriminator_FCN(x, z, r=None, complex_mode=False):
 
             real_out = tf_real_real - tf_imag_imag
             imag_out = tf_imag_real + tf_real_imag
+            
             h1 = tf.complex(real_out, imag_out)
 
             h1_real = tf.real(h1)
@@ -431,6 +434,7 @@ def discriminator_FCN(x, z, r=None, complex_mode=False):
 
             real_out = tf_real_real - tf_imag_imag
             imag_out = tf_imag_real + tf_real_imag
+            
             prob = tf.complex(real_out, imag_out)
 
         else:

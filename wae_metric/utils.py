@@ -148,6 +148,16 @@ def bn(x,is_training,name):
     trainable=True,
     scope=name)
 
+def _batch_norm(tf_input, data_format="channels_last", training=False):
+    tf_output = tf.layers.batch_normalization(
+        tf_input,
+        axis=(1 if data_format == "channels_first" else -1),
+        training=training,
+        renorm=True,
+        fused=True,
+    )
+    return tf_output
+
 def batch_norm_custom(x, n_out, phase_train, scope='bn', decay=0.99, eps=1e-5,reuse=None):
 
     with tf.variable_scope(scope) as scope:
@@ -356,13 +366,15 @@ def ae_test_imgs_plot(fdir,batch,data_dict, complex_mode):
     if complex_mode:
         # Real
         fig = plot(np.real(samples_y_img_plot),immax=np.max(np.real(y_img_test_mb),axis=1),immin=np.min(np.real(y_img_test_mb),axis=1))
-        plt.savefig('{}/y_img_{}_{}.png'
+        plt.savefig('{}/y_real_img_{}_{}.png'
                     .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
         plt.close()
 
+        print(np.imag(samples_y_img_plot))
+
         # Imaginary
         fig = plot(np.imag(samples_y_img_plot),immax=np.max(np.imag(y_img_test_mb),axis=1),immin=np.min(np.imag(y_img_test_mb),axis=1))
-        plt.savefig('{}/y_img_{}_{}.png'
+        plt.savefig('{}/y_imag_img_{}_{}.png'
                     .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
         plt.close()
 
