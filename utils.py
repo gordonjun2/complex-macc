@@ -241,8 +241,8 @@ def test_imgs_plot(fdir,batch,data_dict, complex_mode):
     y_img_test = data_dict['y_img']
     x_test_mb = data_dict['x']
 
-    #nTest = x_test_mb.shape[0]
-    nTest = 100
+    nTest = x_test_mb.shape[0]
+    # nTest = 100
     idx = np.random.choice(range(4),1)
     y_sca_test_mb = y_sca_test[-nTest:,:]
     y_img_test_ = y_img_test[-nTest:,:16384]
