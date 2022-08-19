@@ -31,7 +31,7 @@ def run(**kwargs):
     fdir = kwargs.get('fdir', './surrogate_outs')
     modeldir = kwargs.get('modeldir','./pretrained_model')
     ae_path = kwargs.get('ae_dir','./wae_metric/pretrained_model')
-    datapath = kwargs.get('datapath','./data/icf-jag-10k/')
+    dataset = kwargs.get('dataset')
 
     visdir = './tensorboard_plots'
     if not os.path.exists(fdir):
@@ -53,10 +53,35 @@ def run(**kwargs):
 
     print('Loading dataset...')
 
-    jag_inp, jag_sca, jag_img = load_dataset(datapath, complex_mode)
-    tr_id = np.random.choice(jag_sca.shape[0],int(jag_sca.shape[0]*0.95),replace=False)
+    if dataset == 'fft-scattering-coef':
+        complex_mode = True
+        fft_inp, fft_img = load_dataset(dataset, complex_mode)
 
-    te_id = list(set(range(jag_sca.shape[0])) - set(tr_id))
+        tr_id = np.random.choice(fft_img.shape[0],int(fft_img.shape[0]*0.95),replace=False)
+        te_id = list(set(range(fft_img.shape[0])) - set(tr_id))
+
+        X_test = np.complex64(fft_inp[te_id,:])
+        y_img_test = fft_img[te_id,:]
+        y_img_test_mb = y_img_test[-16:,:]
+
+        y_img_test_mb = y_img_test_mb.reshape(16,64,64,16)
+
+    else:
+        jag_inp, jag_sca, jag_img = load_dataset(dataset, complex_mode)
+
+        tr_id = np.random.choice(jag_sca.shape[0],int(jag_sca.shape[0]*0.95),replace=False)
+        te_id = list(set(range(jag_sca.shape[0])) - set(tr_id))
+
+        if complex_mode:
+            X_test = np.complex64(jag_inp[te_id,:])
+            y_sca_test = np.complex64(jag_sca[te_id,:])
+        else:
+            X_test = jag_inp[te_id,:]
+            y_sca_test = jag_sca[te_id,:]
+        y_img_test = jag_img[te_id,:]
+        y_img_test_mb = y_img_test[-16:,:]
+
+        y_img_test_mb = y_img_test_mb.reshape(16,64,64,4)
     
     print('Splitting dataset indexes...')
 
@@ -80,20 +105,12 @@ def run(**kwargs):
     # y_sca_train = jag_sca[tr_id,:]
     # y_img_train = jag_img[tr_id,:]
 
-    np.random.shuffle(te_id)
-
-    if complex_mode:
-        X_test = np.complex64(jag_inp[te_id,:])
-        y_sca_test = np.complex64(jag_sca[te_id,:])
+    if dataset == 'fft-scattering-coef':
+        ks = 16
     else:
-        X_test = jag_inp[te_id,:]
-        y_sca_test = jag_sca[te_id,:]
-    y_img_test = jag_img[te_id,:]
-    y_img_test_mb = y_img_test[-16:,:]
+        ks = 4
 
-    y_img_test_mb = y_img_test_mb.reshape(16,64,64,4)
-
-    for k in range(4):
+    for k in range(ks):
         if complex_mode:
             # Real
             fig = plot(np.real(y_img_test_mb[:,:,:,k]),immax=np.max(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
@@ -116,23 +133,30 @@ def run(**kwargs):
                         .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
             plt.close()
 
-    print("Dataset dimensions: ",X_test.shape,y_sca_test.shape,y_img_test.shape)
-    dim_x = jag_inp.shape[1]
-    dim_y_sca = jag_sca.shape[1]
-    dim_y_img = jag_img.shape[1]
-    dim_y_img_latent = LATENT_SPACE_DIM #latent space
+    if dataset == 'fft-scattering-coef':
+        print("Dataset dimensions: ", X_test.shape, y_img_test.shape)
+        dim_x = fft_inp.shape[1]
+        dim_y_img = fft_img.shape[1]
+        dim_y_img_latent = LATENT_SPACE_DIM #latent space
+    else:
+        print("Dataset dimensions: ",X_test.shape,y_sca_test.shape,y_img_test.shape)
+        dim_x = jag_inp.shape[1]
+        dim_y_sca = jag_sca.shape[1]
+        dim_y_img = jag_img.shape[1]
+        dim_y_img_latent = LATENT_SPACE_DIM #latent space
 
     ### Metric params
 
     ''' TEST mini-batch '''
     x_test_mb = X_test[-100:,:]
-    y_sca_test_mb = y_sca_test[-100:,:]
+    # y_sca_test_mb = y_sca_test[-100:,:]
     y_img_test_mb = y_img_test[-100:,:]
 
     print('Initialising model...')
 
     if complex_mode:
-        y_sca = tf.placeholder(tf.complex64, shape=[None, dim_y_sca])
+        if dataset != 'fft-scattering-coef':
+            y_sca = tf.placeholder(tf.complex64, shape=[None, dim_y_sca])
         y_img = tf.placeholder(tf.complex64, shape=[None, dim_y_img])
         x = tf.placeholder(tf.complex64, shape=[None, dim_x])
     else:
@@ -142,7 +166,10 @@ def run(**kwargs):
 
     train_mode = tf.placeholder(tf.bool,name='train_mode')
 
-    y_mm = tf.concat([y_img,y_sca],axis=1)
+    if dataset == 'fft-scattering-coef':
+        y_mm = y_img
+    else:
+        y_mm = tf.concat([y_img,y_sca],axis=1)
 
     '''**** Encode the img, scalars ground truth --> latent vector for loss computation ****'''
     # Using the pretrained encoder from pretrained Multi-modal Wasserstein Autoencoder
@@ -163,17 +190,24 @@ def run(**kwargs):
 
     '''**** Decode the prediction from latent vector --> img, scalars ****'''
     # Using the pretrained decoder from pretrained Multi-modal Wasserstein Autoencoder
-    y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca, train_mode = False, reuse = False, complex_mode = complex_mode)
+    if dataset == 'fft-scattering-coef':
+        y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img, train_mode = False, reuse = False, complex_mode = complex_mode)
+    else:
+        y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca, train_mode = False, reuse = False, complex_mode = complex_mode)
 
     if complex_mode:
-        img_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out[:,:16384] - y_img)))
-        sca_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out[:,16384:] - y_sca)))
+        if dataset == 'fft-scattering-coef':
+            img_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out - y_img)))
+        else:
+            img_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out[:,:16384] - y_img)))
+            sca_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out[:,16384:] - y_sca)))
     else:
         img_loss = tf.reduce_mean(tf.square(y_img_out[:,:16384] - y_img))
         sca_loss = tf.reduce_mean(tf.square(y_img_out[:,16384:] - y_sca))
 
     fwd_img_summary = tf.summary.scalar(name='Image Loss', tensor=img_loss)
-    fwd_sca_summary = tf.summary.scalar(name='Scalar Loss', tensor=sca_loss)
+    if dataset != 'fft-scattering-coef':
+        fwd_sca_summary = tf.summary.scalar(name='Scalar Loss', tensor=sca_loss)
     merged = tf.summary.merge_all()
 
     t_vars = tf.global_variables()
@@ -205,12 +239,18 @@ def run(**kwargs):
 
     for tr_id in tr_id_split:
         if complex_mode:
-            X_train = np.complex64(jag_inp[tr_id,:])
-            y_sca_train = np.complex64(jag_sca[tr_id,:])
+            if dataset == 'fft-scattering-coef':
+                X_train = np.complex64(fft_inp[tr_id,:])
+            else:
+                X_train = np.complex64(jag_inp[tr_id,:])
+                y_sca_train = np.complex64(jag_sca[tr_id,:])
         else:
             X_train = jag_inp[tr_id,:]
             y_sca_train = jag_sca[tr_id,:]
-        y_img_train = jag_img[tr_id,:]
+        if dataset == 'fft-scattering-coef':
+            y_img_train = fft_img[tr_id,:]
+        else:
+            y_img_train = jag_img[tr_id,:]
         for it in range(100000//split_n):
 
             if X_train.shape[0] < batch_size:
@@ -219,9 +259,11 @@ def run(**kwargs):
             randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
             x_mb = X_train[randid,:]
             y_img_mb = y_img_train[randid,:]
-            y_sca_mb = y_sca_train[randid,:]
-
-            fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
+            if dataset != 'fft-scattering-coef':
+                fd = {x: x_mb,y_img:y_img_mb,train_mode:True}
+            else:
+                y_sca_mb = y_sca_train[randid,:]
+                fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
 
             for _ in range(10):
                 _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
@@ -244,7 +286,11 @@ def run(**kwargs):
 
                 nTest=16
                 x_test_mb = X_test[-nTest:,:]
-                summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
+
+                if dataset != 'fft-scattering-coef':
+                    summary_val = sess.run(merged,feed_dict={x:X_test,y_img:y_img_test,train_mode:False})
+                else:
+                    summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
 
                 writer.add_summary(summary_val, it_total)
 
@@ -253,11 +299,12 @@ def run(**kwargs):
                 data_dict= {}
                 data_dict['samples'] = samples
                 data_dict['samples_x'] = samples_x
-                data_dict['y_sca'] = y_sca_test
+                if dataset != 'fft-scattering-coef':
+                    data_dict['y_sca'] = y_sca_test
                 data_dict['y_img'] = y_img_test
                 data_dict['x'] = x_test_mb
 
-                test_imgs_plot(fdir,it_total,data_dict, complex_mode)
+                test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
                 save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
 

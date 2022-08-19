@@ -233,27 +233,39 @@ def plot(samples,immax=None,immin=None):
             plt.imshow(sample.reshape(IMAGE_SIZE, IMAGE_SIZE), cmap='winter',vmax=immax[i],vmin=immin[i])
     return fig
 
-def test_imgs_plot(fdir,batch,data_dict, complex_mode):
+def test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
     i = batch
     samples = data_dict['samples']
     samples_x = data_dict['samples_x']
-    y_sca_test = data_dict['y_sca']
+    if dataset != 'fft-scattering-coef':
+        y_sca_test = data_dict['y_sca']
     y_img_test = data_dict['y_img']
     x_test_mb = data_dict['x']
 
     nTest = x_test_mb.shape[0]
     # nTest = 100
-    idx = np.random.choice(range(4),1)
-    y_sca_test_mb = y_sca_test[-nTest:,:]
-    y_img_test_ = y_img_test[-nTest:,:16384]
-    y_img_test_mb = y_img_test_.reshape(-1,64,64,4)[:,:,:,idx].reshape(-1,4096)
-    samples_y_sca = samples[:,16384:]
-    samples_y_img = samples[:,:16384].reshape(-1,64,64,4)
+    
+    if dataset != 'fft-scattering-coef':
+        y_sca_test_mb = y_sca_test[-nTest:,:]
+
+    if dataset == 'fft-scattering-coef':
+        idx = np.random.choice(range(16),1)
+        y_img_test_ = y_img_test[-nTest:,:]
+        y_img_test_mb = y_img_test_.reshape(-1,64,64,16)[:,:,:,idx].reshape(-1,4096)
+        samples_y_img = samples[-nTest:,:].reshape(-1,64,64,16)
+    else:
+        idx = np.random.choice(range(4),1)
+        y_img_test_ = y_img_test[-nTest:,:16384]
+        y_img_test_mb = y_img_test_.reshape(-1,64,64,4)[:,:,:,idx].reshape(-1,4096)
+        samples_y_sca = samples[-nTest:,16384:]
+        samples_y_img = samples[-nTest:,:16384].reshape(-1,64,64,4)
     samples_y_img_plot = samples_y_img[:,:,:,idx]
-    fig = plot_line(samples_y_sca,y_sca_test_mb,bar=False)
-    plt.savefig('{}/y_sca_{}.png'
-                .format(fdir,str(i).zfill(3)), bbox_inches='tight')
-    plt.close()
+
+    if dataset != 'fft-scattering-coef':
+        fig = plot_line(samples_y_sca,y_sca_test_mb,bar=False)
+        plt.savefig('{}/y_sca_{}.png'
+                    .format(fdir,str(i).zfill(3)), bbox_inches='tight')
+        plt.close()
 
     if complex_mode:
         # Real

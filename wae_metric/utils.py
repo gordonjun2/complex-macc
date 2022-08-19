@@ -343,15 +343,21 @@ def ae_test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
     y_img_test = data_dict['y_img']
 
     nTest = samples.shape[0]                             # actual test size = samples.shape[0]
-    idx = np.random.choice(range(4),1)
 
     if dataset != 'fft-scattering-coef':
         y_sca_test_mb = y_sca_test[-nTest:,:]
 
-    y_img_test_ = y_img_test[-nTest:,:16384]
-    y_img_test_mb = y_img_test_.reshape(-1,64,64,4)[:,:,:,idx].reshape(-1,4096)
-    samples_y_sca = samples[-nTest:,16384:]
-    samples_y_img = samples[-nTest:,:16384].reshape(-1,64,64,4)
+    if dataset == 'fft-scattering-coef':
+        idx = np.random.choice(range(16),1)
+        y_img_test_ = y_img_test[-nTest:,:]
+        y_img_test_mb = y_img_test_.reshape(-1,64,64,16)[:,:,:,idx].reshape(-1,4096)
+        samples_y_img = samples[-nTest:,:].reshape(-1,64,64,16)
+    else:
+        idx = np.random.choice(range(4),1)
+        y_img_test_ = y_img_test[-nTest:,:16384]
+        y_img_test_mb = y_img_test_.reshape(-1,64,64,4)[:,:,:,idx].reshape(-1,4096)
+        samples_y_sca = samples[-nTest:,16384:]
+        samples_y_img = samples[-nTest:,:16384].reshape(-1,64,64,4)
     samples_y_img_plot = samples_y_img[:,:,:,idx]
 
     if dataset != 'fft-scattering-coef':

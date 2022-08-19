@@ -15,7 +15,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from .model_AVB import *
 
-LATENT_SPACE_DIM = 20
+LATENT_SPACE_DIM = 20           # try 80 for dataset == 'fft-scattering-coef'
 
 
 def sample_z(L,dim,type='uniform'):
@@ -35,9 +35,8 @@ def load_dataset(dataset, complex_mode):
 
         fft_img = np.load(datapath+'fft40K_images.npy')
         fft_inp = np.load(datapath+'fft40K_params.npy')
-        fft_template_img = np.load(datapath+'fft40K_template_image.npy')
 
-        return fft_template_img, fft_inp, fft_img
+        return fft_inp, fft_img
 
     else:
         datapath = './data/icf-jag-10k/'
@@ -77,7 +76,7 @@ def run(**kwargs):
 
     if dataset == 'fft-scattering-coef':
         complex_mode = True
-        fft_template_img, fft_inp, fft_img = load_dataset(dataset, complex_mode)
+        fft_inp, fft_img = load_dataset(dataset, complex_mode)
 
         tr_id = np.random.choice(fft_img.shape[0],int(fft_img.shape[0]*0.95),replace=False)
         te_id = list(set(range(fft_img.shape[0])) - set(tr_id))
