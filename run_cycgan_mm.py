@@ -46,6 +46,12 @@ def run(**kwargs):
     complex_mode = kwargs.get('complex_mode')
     split_n = kwargs.get('split_n')
 
+    if dataset == 'fft-scattering-coef':
+        complex_mode = True
+        print('fft-scattering-coef dataset is selected...')
+    else:
+        print('icf-jag dataset is selected...')
+
     if complex_mode:
         print('Complex Mode is selected...')
     else:
@@ -54,7 +60,6 @@ def run(**kwargs):
     print('Loading dataset...')
 
     if dataset == 'fft-scattering-coef':
-        complex_mode = True
         fft_inp, fft_img = load_dataset(dataset, complex_mode)
 
         tr_id = np.random.choice(fft_img.shape[0],int(fft_img.shape[0]*0.95),replace=False)
@@ -259,7 +264,7 @@ def run(**kwargs):
             randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
             x_mb = X_train[randid,:]
             y_img_mb = y_img_train[randid,:]
-            if dataset != 'fft-scattering-coef':
+            if dataset == 'fft-scattering-coef':
                 fd = {x: x_mb,y_img:y_img_mb,train_mode:True}
             else:
                 y_sca_mb = y_sca_train[randid,:]
@@ -287,7 +292,7 @@ def run(**kwargs):
                 nTest=16
                 x_test_mb = X_test[-nTest:,:]
 
-                if dataset != 'fft-scattering-coef':
+                if dataset == 'fft-scattering-coef':
                     summary_val = sess.run(merged,feed_dict={x:X_test,y_img:y_img_test,train_mode:False})
                 else:
                     summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})

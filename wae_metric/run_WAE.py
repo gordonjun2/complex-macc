@@ -61,6 +61,12 @@ def run(**kwargs):
     complex_mode = kwargs.get('complex_mode')
     split_n = kwargs.get('split_n')
 
+    if dataset == 'fft-scattering-coef':
+        complex_mode = True
+        print('fft-scattering-coef dataset is selected...')
+    else:
+        print('icf-jag dataset is selected...')
+
     if complex_mode:
         print('Complex Mode is selected...')
     else:
@@ -75,7 +81,6 @@ def run(**kwargs):
     print('Loading dataset...')
 
     if dataset == 'fft-scattering-coef':
-        complex_mode = True
         fft_inp, fft_img = load_dataset(dataset, complex_mode)
 
         tr_id = np.random.choice(fft_img.shape[0],int(fft_img.shape[0]*0.95),replace=False)
