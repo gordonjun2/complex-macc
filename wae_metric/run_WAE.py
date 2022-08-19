@@ -28,21 +28,34 @@ def sample_z(L,dim,type='uniform'):
 
     return np.asarray(theta)
 
-def load_dataset(datapath, complex_mode):
-    if complex_mode:
-        jag_img = np.load(datapath+'jag10K_images_complex.npy')
-    else:
-        jag_img = np.load(datapath+'jag10K_images.npy')
-    jag_sca = np.load(datapath+'jag10K_0_scalars.npy')
-    jag_inp = np.load(datapath+'jag10K_params.npy')
+def load_dataset(dataset, complex_mode):
 
-    return jag_inp,jag_sca,jag_img
+    if dataset == 'fft-scattering-coef':
+        datapath = './data/fft-scattering-coef-40k/'
+
+        fft_img = np.load(datapath+'fft40K_images.npy')
+        fft_inp = np.load(datapath+'fft40K_params.npy')
+        fft_template_img = np.load(datapath+'fft40K_template_image.npy')
+
+        return fft_template_img, fft_inp, fft_img
+
+    else:
+        datapath = './data/icf-jag-10k/'
+
+        if complex_mode:
+            jag_img = np.load(datapath+'jag10K_images_complex.npy')
+        else:
+            jag_img = np.load(datapath+'jag10K_images.npy')
+        jag_sca = np.load(datapath+'jag10K_0_scalars.npy')
+        jag_inp = np.load(datapath+'jag10K_params.npy')
+
+        return jag_inp,jag_sca,jag_img
 
 def run(**kwargs):
 
     fdir = kwargs.get('fdir','./wae_metric/ae_outs')
     modeldir = kwargs.get('modeldir','./wae_metric/ae_model_weights')
-    datapath = kwargs.get('datapath','./data/icf-jag-10k/')
+    dataset = kwargs.get('dataset')
     vizdir = kwargs.get('vizdir','graphs')
     lam = kwargs.get('lam',1e-4)
     dim_z = kwargs.get('dimz',LATENT_SPACE_DIM)
@@ -62,12 +75,31 @@ def run(**kwargs):
 
     print('Loading dataset...')
 
-    jag_inp, jag_sca, jag_img = load_dataset(datapath, complex_mode)
-    jag = np.hstack((jag_img,jag_sca))
+    if dataset == 'fft-scattering-coef':
+        complex_mode = True
+        fft_template_img, fft_inp, fft_img = load_dataset(dataset, complex_mode)
 
+        tr_id = np.random.choice(fft_img.shape[0],int(fft_img.shape[0]*0.95),replace=False)
+        te_id = list(set(range(fft_img.shape[0])) - set(tr_id))
 
-    tr_id = np.random.choice(jag.shape[0],int(jag.shape[0]*0.95),replace=False)
-    te_id = list(set(range(jag.shape[0])) - set(tr_id))
+        X_test_set = fft_img[te_id,:]           # same variable for y_test_set
+        # y_test_set = fft_img[te_id,:]
+
+        dim_image = fft_img.shape[1]
+
+    else:
+        jag_inp, jag_sca, jag_img = load_dataset(dataset, complex_mode)
+        jag = np.hstack((jag_img,jag_sca))
+
+        tr_id = np.random.choice(jag.shape[0],int(jag.shape[0]*0.95),replace=False)
+        te_id = list(set(range(jag.shape[0])) - set(tr_id))
+
+        X_img_test_set = jag_img[te_id,:]
+        X_sca_test_set = jag_sca[te_id,:]
+        X_test_set = jag[te_id,:]           # same variable for y_test_set
+        # y_test_set = jag[te_id,:]
+
+        dim_image = jag.shape[1]
     
     print('No. of training dataset: ', len(tr_id))
     print('No. of testing dataset: ', len(te_id))
@@ -85,11 +117,6 @@ def run(**kwargs):
     else:
         sub_X_train_len = len(tr_id)//split_n
         tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(split_n+1)]
-    
-    X_img_test_set = jag_img[te_id,:]
-    X_sca_test_set = jag_sca[te_id,:]
-    X_test_set = jag[te_id,:]           # same variable for y_test_set
-    # y_test_set = jag[te_id,:]
 
     batch_size = 100
 
@@ -99,9 +126,6 @@ def run(**kwargs):
     print('Batch Size: ', batch_size)
 
     print('Initialising model...')
-
-    dim_image = jag.shape[1]
-
 
     # Image  to Image
     if complex_mode:
@@ -168,7 +192,10 @@ def run(**kwargs):
     it_total = 0
 
     for tr_id in tr_id_split:
-        X_train  = jag[tr_id,:]
+        if dataset == 'fft-scattering-coef':
+            X_train  = fft_img[tr_id,:]
+        else:
+            X_train  = jag[tr_id,:]
         for it in range(0,100000//split_n):
             if X_train.shape[0] < batch_size:
                 batch_size = X_train.shape[0]
@@ -201,10 +228,14 @@ def run(**kwargs):
 
                 data_dict= {}
                 data_dict['samples'] = samples
-                data_dict['y_sca'] = X_sca_test_set
-                data_dict['y_img'] = X_img_test_set
+                
+                if dataset == 'fft-scattering-coef':
+                    data_dict['y_img'] = X_test_set
+                else:
+                    data_dict['y_sca'] = X_sca_test_set
+                    data_dict['y_img'] = X_img_test_set
 
-                ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode)
+                ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
             if (it_total+1)%10000==0:
                 save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")

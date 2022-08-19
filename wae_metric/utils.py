@@ -148,16 +148,6 @@ def bn(x,is_training,name):
     trainable=True,
     scope=name)
 
-def _batch_norm(tf_input, data_format="channels_last", training=False):
-    tf_output = tf.layers.batch_normalization(
-        tf_input,
-        axis=(1 if data_format == "channels_first" else -1),
-        training=training,
-        renorm=True,
-        fused=True,
-    )
-    return tf_output
-
 def batch_norm_custom(x, n_out, phase_train, scope='bn', decay=0.99, eps=1e-5,reuse=None):
 
     with tf.variable_scope(scope) as scope:
@@ -344,37 +334,42 @@ def xavier_init(size):
     xavier_stddev = 1. / tf.sqrt(in_dim / 2.)
     return tf.random_normal(shape=size, stddev=xavier_stddev)
 
-def ae_test_imgs_plot(fdir,batch,data_dict, complex_mode):
+def ae_test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
     i = batch
     samples = data_dict['samples']
-    y_sca_test = data_dict['y_sca']
+
+    if dataset != 'fft-scattering-coef':
+        y_sca_test = data_dict['y_sca']
     y_img_test = data_dict['y_img']
 
-    nTest = 100                             # actual test size = samples.shape[0]
+    nTest = samples.shape[0]                             # actual test size = samples.shape[0]
     idx = np.random.choice(range(4),1)
-    y_sca_test_mb = y_sca_test[-nTest:,:]
+
+    if dataset != 'fft-scattering-coef':
+        y_sca_test_mb = y_sca_test[-nTest:,:]
+
     y_img_test_ = y_img_test[-nTest:,:16384]
     y_img_test_mb = y_img_test_.reshape(-1,64,64,4)[:,:,:,idx].reshape(-1,4096)
     samples_y_sca = samples[-nTest:,16384:]
     samples_y_img = samples[-nTest:,:16384].reshape(-1,64,64,4)
     samples_y_img_plot = samples_y_img[:,:,:,idx]
-    fig = plot_line(samples_y_sca,y_sca_test_mb,bar=False)
-    plt.savefig('{}/y_sca_{}.png'
-                .format(fdir,str(i).zfill(3)), bbox_inches='tight')
-    plt.close()
+
+    if dataset != 'fft-scattering-coef':
+        fig = plot_line(samples_y_sca,y_sca_test_mb,bar=False)
+        plt.savefig('{}/y_sca_{}.png'
+                    .format(fdir,str(i).zfill(3)), bbox_inches='tight')
+        plt.close()
 
     if complex_mode:
         # Real
         fig = plot(np.real(samples_y_img_plot),immax=np.max(np.real(y_img_test_mb),axis=1),immin=np.min(np.real(y_img_test_mb),axis=1))
-        plt.savefig('{}/y_real_img_{}_{}.png'
+        plt.savefig('{}/y_img_{}_{}.png'
                     .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
         plt.close()
 
-        print(np.imag(samples_y_img_plot))
-
         # Imaginary
         fig = plot(np.imag(samples_y_img_plot),immax=np.max(np.imag(y_img_test_mb),axis=1),immin=np.min(np.imag(y_img_test_mb),axis=1))
-        plt.savefig('{}/y_imag_img_{}_{}.png'
+        plt.savefig('{}/y_img_{}_{}.png'
                     .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
         plt.close()
 
