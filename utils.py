@@ -233,6 +233,14 @@ def plot(samples,immax=None,immin=None):
             plt.imshow(sample.reshape(IMAGE_SIZE, IMAGE_SIZE), cmap='winter',vmax=immax[i],vmin=immin[i])
     return fig
 
+def meanEuclidDist(gt, pred):
+
+    dist = np.linalg.norm(gt - pred, axis=1)
+
+    mean_dist = np.mean(dist)
+
+    return mean_dist
+
 def test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
     i = batch
     samples = data_dict['samples']
@@ -249,11 +257,21 @@ def test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
         y_sca_test_mb = y_sca_test[-nTest:,:]
 
     if dataset == 'fft-scattering-coef':
+
+        mean_dist = meanEuclidDist(samples[-nTest:,:], y_img_test[-nTest:,:])
+        print('Mean Euclidean Distance between Ground Truth images and Predicted images: {:.4f}\n'
+            .format(mean_dist))
+
         idx = np.random.choice(range(16),1)
         y_img_test_ = y_img_test[-nTest:,:]
         y_img_test_mb = y_img_test_.reshape(-1,64,64,16)[:,:,:,idx].reshape(-1,4096)
         samples_y_img = samples[-nTest:,:].reshape(-1,64,64,16)
     else:
+
+        mean_dist = meanEuclidDist(samples[-nTest:,:16384], y_img_test[-nTest:,:16384])
+        print('Mean Euclidean Distance between Ground Truth images and Predicted images: {:.4f}\n'
+            .format(mean_dist))
+
         idx = np.random.choice(range(4),1)
         y_img_test_ = y_img_test[-nTest:,:16384]
         y_img_test_mb = y_img_test_.reshape(-1,64,64,4)[:,:,:,idx].reshape(-1,4096)

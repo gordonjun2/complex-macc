@@ -284,7 +284,10 @@ def run(**kwargs):
             if it_total % 100 == 0:
                 print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
                     .format(it_total, gloss0, gloss1))
-                print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
+                if it_total % 500 == 0:
+                    print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}'.format(dloss,gadv))
+                else:
+                    print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
 
 
             if it_total % 500 == 0:
