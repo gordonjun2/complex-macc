@@ -28,27 +28,32 @@ def sample_z(L,dim,type='uniform'):
 
     return np.asarray(theta)
 
-def load_dataset(dataset, complex_mode):
+def load_dataset(complex_mode):
 
-    if dataset == 'fft-scattering-coef':
-        datapath = './data/fft-scattering-coef-40k/'
+    datapath = './data/icf-jag-10k/'
 
-        fft_img = np.load(datapath+'fft40K_images.npy')
-        fft_inp = np.load(datapath+'fft40K_params.npy')
-
-        return fft_inp, fft_img
-
+    if complex_mode:
+        jag_img = np.load(datapath+'jag10K_images_complex.npy')
     else:
-        datapath = './data/icf-jag-10k/'
+        jag_img = np.load(datapath+'jag10K_images.npy')
+    jag_sca = np.load(datapath+'jag10K_0_scalars.npy')
+    jag_inp = np.load(datapath+'jag10K_params.npy')
 
-        if complex_mode:
-            jag_img = np.load(datapath+'jag10K_images_complex.npy')
+    return jag_inp,jag_sca,jag_img
+
+def load_fft_dataset_actual(fft_npy_datapath, files_list_split):
+
+    first_data_flag = 1
+
+    for npy in files_list_split:
+        if first_data_flag == 1:
+            fft_data = np.load(fft_npy_datapath + npy)
+            first_data_flag = 0
         else:
-            jag_img = np.load(datapath+'jag10K_images.npy')
-        jag_sca = np.load(datapath+'jag10K_0_scalars.npy')
-        jag_inp = np.load(datapath+'jag10K_params.npy')
+            fft_data_cur = np.load(fft_npy_datapath + npy)
+            fft_data = np.vstack([fft_data, fft_data_cur])
 
-        return jag_inp,jag_sca,jag_img
+    return fft_data
 
 def run(**kwargs):
 
@@ -60,6 +65,7 @@ def run(**kwargs):
     dim_z = kwargs.get('dimz',LATENT_SPACE_DIM)
     complex_mode = kwargs.get('complex_mode')
     split_n = kwargs.get('split_n')
+    num_npy = kwargs.get('num_npy')
 
     if dataset == 'fft-scattering-coef':
         complex_mode = True
@@ -81,18 +87,27 @@ def run(**kwargs):
     print('Loading dataset...')
 
     if dataset == 'fft-scattering-coef':
-        fft_inp, fft_img = load_dataset(dataset, complex_mode)
 
-        tr_id = np.random.choice(fft_img.shape[0],int(fft_img.shape[0]*0.95),replace=False)
-        te_id = list(set(range(fft_img.shape[0])) - set(tr_id))
+        fft_datapath = './data/fft-scattering-coef-40k/'
 
-        X_test_set = fft_img[te_id,:]           # same variable for y_test_set
-        # y_test_set = fft_img[te_id,:]
+        fft_img_datapath = fft_datapath + 'fft40K_images/'
+        fft_img_files_list = os.listdir(fft_img_datapath)
 
-        dim_image = fft_img.shape[1]
+        fft_inp_datapath = fft_datapath + 'fft40K_params/'
+        fft_inp_files_list = os.listdir(fft_inp_datapath)
+
+        fft_data_size_per_npy_set = num_npy * 100                   # Each npy has 100 data, thus total data is num_npy * 100
+
+        tr_id = np.random.choice(fft_data_size_per_npy_set,int(fft_data_size_per_npy_set*0.95),replace=False)
+        te_id = list(set(range(fft_data_size_per_npy_set)) - set(tr_id))
+
+        # X_test_set = fft_img[te_id,:]           # same variable for y_test_set
+        # # y_test_set = fft_img[te_id,:]
+
+        dim_image = 64*64*16
 
     else:
-        jag_inp, jag_sca, jag_img = load_dataset(dataset, complex_mode)
+        jag_inp, jag_sca, jag_img = load_dataset(complex_mode)
         jag = np.hstack((jag_img,jag_sca))
 
         tr_id = np.random.choice(jag.shape[0],int(jag.shape[0]*0.95),replace=False)
@@ -194,57 +209,110 @@ def run(**kwargs):
     # if complex_mode:
         
     it_total = 0
+    if dataset == 'fft-scattering-coef':
+        it_max = 400000
+    else:
+        it_max = 100000
 
-    for tr_id in tr_id_split:
-        if dataset == 'fft-scattering-coef':
-            X_train  = fft_img[tr_id,:]
-        else:
+    if dataset == 'fft-scattering-coef':
+
+        for i in range(num_npy):
+            fft_img_files_list_split = fft_img_files_list[i*num_npy:i*num_npy+num_npy]
+            fft_inp_files_list_split = fft_inp_files_list[i*num_npy:i*num_npy+num_npy]
+
+            fft_img = load_fft_dataset_actual(fft_img_datapath, fft_img_files_list_split)
+            # fft_inp = load_fft_dataset_actual(fft_inp_datapath, fft_inp_files_list_split)
+
+            for tr_id in tr_id_split:
+                X_train  = fft_img[tr_id,:]
+                X_test_set = fft_img[te_id,:]
+
+                for it in range(0, (it_max//num_py)//split_n):
+                    if X_train.shape[0] < batch_size:
+                        batch_size = X_train.shape[0]
+                    randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+                    y_mb = X_train[randid,:]
+                    # X_mb = X_train[randid,:]
+
+                    z_mb = sample_z(batch_size,dim_z)
+
+                    fd = {y:y_mb, train_mode: True,z:z_mb}
+                    for i in range(1):
+                        _, G_loss_curr,tmp1,tmp2 = sess.run([G_solver, G_loss,rec_error,gen_error],
+                                                feed_dict=fd)
+                    for i in range(1):
+                        _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict=fd)
+
+                    if (it_total+1) % 100 ==0:
+                        summary = sess.run(merged,feed_dict=fd)
+                        writer.add_summary(summary, it_total)
+
+                    if (it_total+1) % 1000 == 0:
+                        print('Iter: {}; Recon_Error = : {:.4}, G_Loss: {:.4}; D_Loss: {:.4}'
+                            .format(it_total+1, tmp1, tmp2, D_loss_curr))
+
+                        z_test = sample_z(len(te_id),dim_z)
+                        fd = {train_mode:False, y:X_test_set, z:z_test}
+                        samples,summary_val = sess.run([y_recon,merged],feed_dict=fd)
+
+                        writer_test.add_summary(summary_val, it_total)
+
+                        data_dict= {}
+                        data_dict['samples'] = samples
+                        
+                        data_dict['y_img'] = X_test_set
+
+                        ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
+
+                    if (it_total+1)%10000==0:
+                        save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+
+                    it_total = it_total + 1
+
+    else:
+        for tr_id in tr_id_split:
             X_train  = jag[tr_id,:]
-        for it in range(0,100000//split_n):
-            if X_train.shape[0] < batch_size:
-                batch_size = X_train.shape[0]
-            randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
-            y_mb = X_train[randid,:]
-            X_mb = X_train[randid,:]
+            for it in range(0, it_max//split_n):
+                if X_train.shape[0] < batch_size:
+                    batch_size = X_train.shape[0]
+                randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+                y_mb = X_train[randid,:]
+                # X_mb = X_train[randid,:]
 
-            z_mb = sample_z(batch_size,dim_z)
+                z_mb = sample_z(batch_size,dim_z)
 
-            fd = {y:y_mb, train_mode: True,z:z_mb}
-            for i in range(1):
-                _, G_loss_curr,tmp1,tmp2 = sess.run([G_solver, G_loss,rec_error,gen_error],
-                                        feed_dict=fd)
-            for i in range(1):
-                _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict=fd)
+                fd = {y:y_mb, train_mode: True,z:z_mb}
+                for i in range(1):
+                    _, G_loss_curr,tmp1,tmp2 = sess.run([G_solver, G_loss,rec_error,gen_error],
+                                            feed_dict=fd)
+                for i in range(1):
+                    _, D_loss_curr = sess.run([D_solver, D_loss],feed_dict=fd)
 
-            if (it_total+1) % 100 ==0:
-                summary = sess.run(merged,feed_dict=fd)
-                writer.add_summary(summary, it_total)
+                if (it_total+1) % 100 ==0:
+                    summary = sess.run(merged,feed_dict=fd)
+                    writer.add_summary(summary, it_total)
 
-            if (it_total+1) % 1000 == 0:
-                print('Iter: {}; Recon_Error = : {:.4}, G_Loss: {:.4}; D_Loss: {:.4}'
-                    .format(it_total+1, tmp1, tmp2, D_loss_curr))
+                if (it_total+1) % 1000 == 0:
+                    print('Iter: {}; Recon_Error = : {:.4}, G_Loss: {:.4}; D_Loss: {:.4}'
+                        .format(it_total+1, tmp1, tmp2, D_loss_curr))
 
-                z_test = sample_z(len(te_id),dim_z)
-                fd = {train_mode:False, y:X_test_set, z:z_test}
-                samples,summary_val = sess.run([y_recon,merged],feed_dict=fd)
+                    z_test = sample_z(len(te_id),dim_z)
+                    fd = {train_mode:False, y:X_test_set, z:z_test}
+                    samples,summary_val = sess.run([y_recon,merged],feed_dict=fd)
 
-                writer_test.add_summary(summary_val, it_total)
+                    writer_test.add_summary(summary_val, it_total)
 
-                data_dict= {}
-                data_dict['samples'] = samples
-                
-                if dataset == 'fft-scattering-coef':
-                    data_dict['y_img'] = X_test_set
-                else:
+                    data_dict= {}
+                    data_dict['samples'] = samples
                     data_dict['y_sca'] = X_sca_test_set
                     data_dict['y_img'] = X_img_test_set
 
-                ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
+                    ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
-            if (it_total+1)%10000==0:
-                save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+                if (it_total+1)%10000==0:
+                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
 
-            it_total = it_total + 1
+                it_total = it_total + 1
 
     # else:
     #     for it in range(0,100000):
