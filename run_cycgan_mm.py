@@ -21,7 +21,7 @@ from sklearn.preprocessing import MinMaxScaler, scale
 
 import wae_metric.model_AVB as wae
 from wae_metric.utils import special_normalize
-from wae_metric.run_WAE import LATENT_SPACE_DIM, load_dataset
+from wae_metric.run_WAE import LATENT_SPACE_DIM, load_dataset, load_fft_dataset_actual
 
 IMAGE_SIZE = 64
 batch_size = 64
@@ -45,6 +45,7 @@ def run(**kwargs):
 
     complex_mode = kwargs.get('complex_mode')
     split_n = kwargs.get('split_n')
+    num_npy = kwargs.get('num_npy')
 
     if dataset == 'fft-scattering-coef':
         complex_mode = True
@@ -60,19 +61,34 @@ def run(**kwargs):
     print('Loading dataset...')
 
     if dataset == 'fft-scattering-coef':
-        fft_inp, fft_img = load_dataset(dataset, complex_mode)
+        
+        fft_datapath = './data/fft-scattering-coef-40k/'
 
-        tr_id = np.random.choice(fft_img.shape[0],int(fft_img.shape[0]*0.95),replace=False)
-        te_id = list(set(range(fft_img.shape[0])) - set(tr_id))
+        fft_img_datapath = fft_datapath + 'fft40K_images/'
+        fft_img_files_list = os.listdir(fft_img_datapath)
 
-        X_test = np.complex64(fft_inp[te_id,:])
-        y_img_test = fft_img[te_id,:]
-        y_img_test_mb = y_img_test[-16:,:]
+        fft_inp_datapath = fft_datapath + 'fft40K_params/'
+        fft_inp_files_list = os.listdir(fft_inp_datapath)
 
-        y_img_test_mb = y_img_test_mb.reshape(16,64,64,16)
+        fft_data_size_per_npy_set = num_npy * 100                   # Each npy has 100 data, thus total data is num_npy * 100
+
+        tr_id = np.random.choice(fft_data_size_per_npy_set,int(fft_data_size_per_npy_set*0.95),replace=False)
+        te_id = list(set(range(fft_data_size_per_npy_set)) - set(tr_id))
+
+        fft_img_files_list_temp = ['fft40K_images_1.npy']
+        fft_img_temp = load_fft_dataset_actual(fft_img_datapath, fft_img_files_list_temp)
+        
+        fft_inp_files_list_temp = ['fft40K_params_1.npy']
+        fft_inp_temp = load_fft_dataset_actual(fft_inp_datapath, fft_inp_files_list_temp)
+
+        y_img_temp = fft_img_temp
+        y_img_temp_mb = y_img_temp[-16:,:]
+        y_img_temp_mb = y_img_temp_mb.reshape(16,64,64,16)
+
+        x_inp_temp = fft_inp_temp
 
     else:
-        jag_inp, jag_sca, jag_img = load_dataset(dataset, complex_mode)
+        jag_inp, jag_sca, jag_img = load_dataset(complex_mode)
 
         tr_id = np.random.choice(jag_sca.shape[0],int(jag_sca.shape[0]*0.95),replace=False)
         te_id = list(set(range(jag_sca.shape[0])) - set(tr_id))
@@ -112,36 +128,52 @@ def run(**kwargs):
 
     if dataset == 'fft-scattering-coef':
         ks = 16
-    else:
-        ks = 4
 
-    for k in range(ks):
-        if complex_mode:
+        for k in range(ks):
             # Real
-            fig = plot(np.real(y_img_test_mb[:,:,:,k]),immax=np.max(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
-                    immin=np.min(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
+            fig = plot(np.real(y_img_temp_mb[:,:,:,k]),immax=np.max(np.real(y_img_temp_mb[:,:,:,k]).reshape(-1,4096),axis=1),
+                    immin=np.min(np.real(y_img_temp_mb[:,:,:,k]).reshape(-1,4096),axis=1))
             plt.savefig('{}/gt_real_img_{}_{}.png'
                         .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
             plt.close()
 
             # Imaginary
-            fig = plot(np.imag(y_img_test_mb[:,:,:,k]),immax=np.max(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
-                    immin=np.min(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
+            fig = plot(np.imag(y_img_temp_mb[:,:,:,k]),immax=np.max(np.imag(y_img_temp_mb[:,:,:,k]).reshape(-1,4096),axis=1),
+                    immin=np.min(np.imag(y_img_temp_mb[:,:,:,k]).reshape(-1,4096),axis=1))
             plt.savefig('{}/gt_imag_img_{}_{}.png'
                         .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
             plt.close()
 
-        else:
-            fig = plot(y_img_test_mb[:,:,:,k],immax=np.max(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1),
-                    immin=np.min(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1))
-            plt.savefig('{}/gt_img_{}_{}.png'
-                        .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
-            plt.close()
+    else:
+        ks = 4
+        
+        for k in range(ks):
+            if complex_mode:
+                # Real
+                fig = plot(np.real(y_img_test_mb[:,:,:,k]),immax=np.max(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
+                        immin=np.min(np.real(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
+                plt.savefig('{}/gt_real_img_{}_{}.png'
+                            .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
+                plt.close()
+
+                # Imaginary
+                fig = plot(np.imag(y_img_test_mb[:,:,:,k]),immax=np.max(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1),
+                        immin=np.min(np.imag(y_img_test_mb[:,:,:,k]).reshape(-1,4096),axis=1))
+                plt.savefig('{}/gt_imag_img_{}_{}.png'
+                            .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
+                plt.close()
+
+            else:
+                fig = plot(y_img_test_mb[:,:,:,k],immax=np.max(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1),
+                        immin=np.min(y_img_test_mb[:,:,:,k].reshape(-1,4096),axis=1))
+                plt.savefig('{}/gt_img_{}_{}.png'
+                            .format(fdir,str(k).zfill(3),str(k)), bbox_inches='tight')
+                plt.close()
 
     if dataset == 'fft-scattering-coef':
-        print("Dataset dimensions: ", X_test.shape, y_img_test.shape)
-        dim_x = fft_inp.shape[1]
-        dim_y_img = fft_img.shape[1]
+        print("Dataset dimensions: ", x_inp_temp[-16:,:].shape, y_img_temp[-16:,:].shape)
+        dim_x = x_inp_temp.shape[1]
+        dim_y_img = y_img_temp.shape[1]
         dim_y_img_latent = LATENT_SPACE_DIM #latent space
     else:
         print("Dataset dimensions: ",X_test.shape,y_sca_test.shape,y_img_test.shape)
@@ -152,10 +184,10 @@ def run(**kwargs):
 
     ### Metric params
 
-    ''' TEST mini-batch '''
-    x_test_mb = X_test[-100:,:]
+    # ''' TEST mini-batch '''
+    # x_test_mb = X_test[-100:,:]
     # y_sca_test_mb = y_sca_test[-100:,:]
-    y_img_test_mb = y_img_test[-100:,:]
+    # y_img_test_mb = y_img_test[-100:,:]
 
     print('Initialising model...')
 
@@ -238,85 +270,146 @@ def run(**kwargs):
 
     print('Training starts...')
 
-    # if complex_mode:
-
     it_total = 0
+    if dataset == 'fft-scattering-coef':
+        it_max = 400000
+    else:
+        it_max = 100000
 
-    for tr_id in tr_id_split:
-        if complex_mode:
-            if dataset == 'fft-scattering-coef':
+    if dataset == 'fft-scattering-coef':
+
+        for i in range(num_npy):
+            fft_img_files_list_split = fft_img_files_list[i*num_npy:i*num_npy+num_npy]
+            fft_inp_files_list_split = fft_inp_files_list[i*num_npy:i*num_npy+num_npy]
+
+            fft_img = load_fft_dataset_actual(fft_img_datapath, fft_img_files_list_split)
+            fft_inp = load_fft_dataset_actual(fft_inp_datapath, fft_inp_files_list_split)
+
+            for tr_id in tr_id_split:
                 X_train = np.complex64(fft_inp[tr_id,:])
-            else:
+                y_img_train = fft_img[tr_id,:]
+
+                X_test = np.complex64(fft_inp[te_id,:])
+                y_img_test = fft_img[te_id,:]
+
+                for it in range(0, (it_max//num_py)//split_n):
+
+                    if X_train.shape[0] < batch_size:
+                        batch_size = X_train.shape[0]
+
+                    randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+                    x_mb = X_train[randid,:]
+                    y_img_mb = y_img_train[randid,:]
+                    
+                    fd = {x: x_mb,y_img:y_img_mb,train_mode:True}
+
+                    for _ in range(10):
+                        _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
+
+                    gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
+                                                    JagNet_MM.loss_gen1,
+                                                    JagNet_MM.loss_adv],
+                                                    feed_dict=fd)
+
+                    for _ in range(1):
+                        _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
+
+                    if (it_total+1) % 100 == 0:
+                        print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
+                            .format(it_total, gloss0, gloss1))
+                        if it_total % 500 == 0:
+                            print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}'.format(dloss,gadv))
+                        else:
+                            print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
+
+
+                    if (it_total+1) % 500 == 0:
+                        summary_val = sess.run(merged,feed_dict={x:X_test,y_img:y_img_test,train_mode:False})
+
+                        writer.add_summary(summary_val, it_total)
+
+                        nTest=16
+                        x_temp_mb = x_inp_temp[-nTest:,:]
+                        y_img_temp_mb = y_img_temp[-nTest:,:]
+
+                        samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
+                                                    feed_dict={x: x_temp_mb,train_mode:False})
+                        data_dict= {}
+                        data_dict['samples'] = samples
+                        data_dict['samples_x'] = samples_x
+                        data_dict['y_img'] = y_img_temp_mb
+                        data_dict['x'] = x_temp_mb
+
+                        test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
+
+                        save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+
+                    it_total = it_total + 1
+
+    else:
+        for tr_id in tr_id_split:
+            if complex_mode:
                 X_train = np.complex64(jag_inp[tr_id,:])
                 y_sca_train = np.complex64(jag_sca[tr_id,:])
-        else:
-            X_train = jag_inp[tr_id,:]
-            y_sca_train = jag_sca[tr_id,:]
-        if dataset == 'fft-scattering-coef':
-            y_img_train = fft_img[tr_id,:]
-        else:
-            y_img_train = jag_img[tr_id,:]
-        for it in range(100000//split_n):
-
-            if X_train.shape[0] < batch_size:
-                batch_size = X_train.shape[0]
-
-            randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
-            x_mb = X_train[randid,:]
-            y_img_mb = y_img_train[randid,:]
-            if dataset == 'fft-scattering-coef':
-                fd = {x: x_mb,y_img:y_img_mb,train_mode:True}
             else:
+                X_train = jag_inp[tr_id,:]
+                y_sca_train = jag_sca[tr_id,:]
+                y_img_train = jag_img[tr_id,:]
+            for it in range(it_max//split_n):
+
+                if X_train.shape[0] < batch_size:
+                    batch_size = X_train.shape[0]
+
+                randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
+                x_mb = X_train[randid,:]
+                y_img_mb = y_img_train[randid,:]
+
                 y_sca_mb = y_sca_train[randid,:]
                 fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
 
-            for _ in range(10):
-                _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
+                for _ in range(10):
+                    _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
 
-            gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
-                                            JagNet_MM.loss_gen1,
-                                            JagNet_MM.loss_adv],
-                                            feed_dict=fd)
+                gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
+                                                JagNet_MM.loss_gen1,
+                                                JagNet_MM.loss_adv],
+                                                feed_dict=fd)
 
-            for _ in range(1):
-                _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
+                for _ in range(1):
+                    _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
 
-            if it_total % 100 == 0:
-                print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-                    .format(it_total, gloss0, gloss1))
-                if it_total % 500 == 0:
-                    print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}'.format(dloss,gadv))
-                else:
-                    print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
+                if (it_total+1) % 100 == 0:
+                    print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
+                        .format(it_total, gloss0, gloss1))
+                    if it_total % 500 == 0:
+                        print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}'.format(dloss,gadv))
+                    else:
+                        print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
 
 
-            if it_total % 500 == 0:
+                if (it_total+1) % 500 == 0:
 
-                nTest=16
-                x_test_mb = X_test[-nTest:,:]
+                    nTest=16
+                    x_test_mb = X_test[-nTest:,:]
 
-                if dataset == 'fft-scattering-coef':
-                    summary_val = sess.run(merged,feed_dict={x:X_test,y_img:y_img_test,train_mode:False})
-                else:
                     summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
 
-                writer.add_summary(summary_val, it_total)
+                    writer.add_summary(summary_val, it_total)
 
-                samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
-                                            feed_dict={x: x_test_mb,train_mode:False})
-                data_dict= {}
-                data_dict['samples'] = samples
-                data_dict['samples_x'] = samples_x
-                if dataset != 'fft-scattering-coef':
+                    samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
+                                                feed_dict={x: x_test_mb,train_mode:False})
+                    data_dict= {}
+                    data_dict['samples'] = samples
+                    data_dict['samples_x'] = samples_x
                     data_dict['y_sca'] = y_sca_test
-                data_dict['y_img'] = y_img_test
-                data_dict['x'] = x_test_mb
+                    data_dict['y_img'] = y_img_test
+                    data_dict['x'] = x_test_mb
 
-                test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
+                    test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
-                save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
 
-            it_total = it_total + 1
+                it_total = it_total + 1
 
     # else:
 

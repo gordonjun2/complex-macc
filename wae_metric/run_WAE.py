@@ -93,8 +93,8 @@ def run(**kwargs):
         fft_img_datapath = fft_datapath + 'fft40K_images/'
         fft_img_files_list = os.listdir(fft_img_datapath)
 
-        fft_inp_datapath = fft_datapath + 'fft40K_params/'
-        fft_inp_files_list = os.listdir(fft_inp_datapath)
+        # fft_inp_datapath = fft_datapath + 'fft40K_params/'
+        # fft_inp_files_list = os.listdir(fft_inp_datapath)
 
         fft_data_size_per_npy_set = num_npy * 100                   # Each npy has 100 data, thus total data is num_npy * 100
 
@@ -205,8 +205,6 @@ def run(**kwargs):
         print("************ Model restored! **************")
 
     print('Training starts...')
-
-    # if complex_mode:
         
     it_total = 0
     if dataset == 'fft-scattering-coef':
@@ -218,7 +216,7 @@ def run(**kwargs):
 
         for i in range(num_npy):
             fft_img_files_list_split = fft_img_files_list[i*num_npy:i*num_npy+num_npy]
-            fft_inp_files_list_split = fft_inp_files_list[i*num_npy:i*num_npy+num_npy]
+            # fft_inp_files_list_split = fft_inp_files_list[i*num_npy:i*num_npy+num_npy]
 
             fft_img = load_fft_dataset_actual(fft_img_datapath, fft_img_files_list_split)
             # fft_inp = load_fft_dataset_actual(fft_inp_datapath, fft_inp_files_list_split)
