@@ -342,7 +342,7 @@ def ae_test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
         y_sca_test = data_dict['y_sca']
     y_img_test = data_dict['y_img']
 
-    nTest = samples.shape[0]                             # actual test size = samples.shape[0]
+    nTest = 100                             # take the last 100 data instead of the whole of testing data, actual test size = samples.shape[0]
 
     if dataset != 'fft-scattering-coef':
         y_sca_test_mb = y_sca_test[-nTest:,:]
@@ -369,13 +369,13 @@ def ae_test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
     if complex_mode:
         # Real
         fig = plot(np.real(samples_y_img_plot),immax=np.max(np.real(y_img_test_mb),axis=1),immin=np.min(np.real(y_img_test_mb),axis=1))
-        plt.savefig('{}/y_img_{}_{}.png'
+        plt.savefig('{}/y_real_img_{}_{}.png'
                     .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
         plt.close()
 
         # Imaginary
         fig = plot(np.imag(samples_y_img_plot),immax=np.max(np.imag(y_img_test_mb),axis=1),immin=np.min(np.imag(y_img_test_mb),axis=1))
-        plt.savefig('{}/y_img_{}_{}.png'
+        plt.savefig('{}/y_imag_img_{}_{}.png'
                     .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
         plt.close()
 
