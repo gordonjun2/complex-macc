@@ -19,8 +19,8 @@ parser.add_argument('-cyc_dir', type=str, default='./surrogate_model_weights',
                     help='Surrogate (Forward) and Inverse Neural Network (Inverse) weight')
 parser.add_argument('-d', type=str, default='icf-jag',
                     help='path to dataset - images, scalars, and input params')
-parser.add_argument('-input_sca', type=float, default=[],
-                    help='Input parameters for the simulation')                             # input parameters as list, e.g. [1, 2, 3, 4, ..]
+# parser.add_argument('-input_sca', type=float, default=[],
+#                     help='Input parameters for the simulation')                             # input parameters as list, e.g. [1, 2, 3, 4, ..]
 # parser.add_argument('-input_img', type=str, default='./sample_images/<image.jpg>',
 #                     help='load a single input image')                                     # NOT BEING IMPLEMENTED YET
 parser.add_argument('--complex_mode', action='store_true',
@@ -31,8 +31,11 @@ infer_dir = args.o
 ae_dir = args.ae_dir
 cyc_dir = args.cyc_dir
 dataset = args.d
-input_sca = args.input_sca
+
+# Type input parameters here
+input_sca = [-0.07920084, 0.70821885, 0.377287, 0.12390906, 0.22148967]
 # input_img = args.input_img
+
 complex_mode = args.complex_mode
 
 ae_dir_outs = './wae_metric/ae_outs'

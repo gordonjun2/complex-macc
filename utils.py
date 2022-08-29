@@ -292,7 +292,7 @@ def test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
     samples_y_img_plot = samples_y_img[:,:,:,idx]
 
     if dataset != 'fft-scattering-coef':
-        fig = plot_line(samples_y_sca,y_sca_test_mb,bar=False)
+        fig = plot_line(dataset, samples_y_sca,y_sca_test_mb,bar=False)
         plt.savefig('{}/y_sca_{}.png'
                     .format(fdir,str(i).zfill(3)), bbox_inches='tight')
         plt.close()
@@ -316,21 +316,17 @@ def test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
                     .format(fdir,str(i).zfill(3),str(idx)), bbox_inches='tight')
         plt.close()
 
-    fig = plot_line(samples_x,x_test_mb,bar=False)
+    fig = plot_line(dataset, samples_x,x_test_mb,bar=False)
     plt.savefig('{}/x_{}.png'
                 .format(fdir,str(i).zfill(3)), bbox_inches='tight')
     plt.close()
     return
 
-def inference_results(infer_dir, gt_sca, pred_x, pred_y, dataset):
+def inference_results(infer_dir, gt_x, pred_x, pred_y, complex_mode, dataset):
 
     if dataset == 'fft-scattering-coef':
         pred_y_img = pred_y.reshape(-1,64,64,16)
     else:
-
-        mean_dist = meanEuclidDist(samples[-nTest:,:16384], y_img_test[-nTest:,:16384])
-        print('Mean Euclidean Distance between Ground Truth images and Predicted images: {:.4f}\n'
-            .format(mean_dist))
 
         pred_y_sca =  pred_y[:,16384:]
         pred_y_img =  pred_y[:,:16384].reshape(-1,64,64,4)
@@ -338,10 +334,12 @@ def inference_results(infer_dir, gt_sca, pred_x, pred_y, dataset):
     pred_y_img_plot = pred_y_img
 
     if dataset != 'fft-scattering-coef':
-        fig = plot_line(pred_y_sca,None,bar=False)
+        fig = plot_line(dataset, pred_y_sca,None,bar=False)
         plt.savefig('{}/y_sca_inferred.png'
                     .format(infer_dir), bbox_inches='tight')
         plt.close()
+
+        print('Predicted y_sca (output parameters): ', pred_y_sca)
 
     num_channels = np.shape(pred_y_img_plot)[3]
 
@@ -349,14 +347,16 @@ def inference_results(infer_dir, gt_sca, pred_x, pred_y, dataset):
 
         for idx in range(num_channels):
 
+            pred_y_img_test = pred_y_img[:,:,:,idx].reshape(-1,4096)
+
             # Real
-            fig = plot(np.real(pred_y_img_plot),immax=np.max(np.real(pred_y_img_plot),axis=1),immin=np.min(np.real(pred_y_img_plot),axis=1))
+            fig = plot(np.real(pred_y_img_plot[:, :, :, idx]),immax=np.max(np.real(pred_y_img_test),axis=1),immin=np.min(np.real(pred_y_img_test),axis=1))
             plt.savefig('{}/y_real_img_inferred_{}.png'
                         .format(infer_dir,str(idx)), bbox_inches='tight')
             plt.close()
 
             # Imaginary
-            fig = plot(np.imag(pred_y_img_plot),immax=np.max(np.imag(pred_y_img_plot),axis=1),immin=np.min(np.imag(pred_y_img_plot),axis=1))
+            fig = plot(np.imag(pred_y_img_plot[:, :, :, idx]),immax=np.max(np.imag(pred_y_img_test),axis=1),immin=np.min(np.imag(pred_y_img_test),axis=1))
             plt.savefig('{}/y_imag_img_inferred_{}.png'
                         .format(infer_dir,str(idx)), bbox_inches='tight')
             plt.close()
@@ -364,15 +364,20 @@ def inference_results(infer_dir, gt_sca, pred_x, pred_y, dataset):
     else:
 
         for idx in range(num_channels):
+
+            pred_y_img_test = pred_y_img[:,:,:,idx].reshape(-1,4096)
             
-            fig = plot(pred_y_img_plot,immax=np.max(pred_y_img_plot,axis=1),immin=np.min(pred_y_img_plot,axis=1))
+            fig = plot(pred_y_img_plot[:, :, :, idx],immax=np.max(pred_y_img_test,axis=1),immin=np.min(pred_y_img_test,axis=1))
             plt.savefig('{}/y_img_inferred_{}.png'
                         .format(infer_dir,str(idx)), bbox_inches='tight')
             plt.close()
 
 
-    fig = plot_line(pred_x, gt_sca, bar=False)
+    fig = plot_line(dataset, pred_x, gt_x, bar=False)
     plt.savefig('{}/x_inferred.png'
                 .format(infer_dir), bbox_inches='tight')
     plt.close()
+
+    print('Predicted x (input parameters): ', pred_x)
+
     return

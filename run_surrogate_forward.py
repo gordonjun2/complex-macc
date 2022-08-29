@@ -32,6 +32,7 @@ def run(**kwargs):
     modeldir = kwargs.get('modeldir','./surrogate_model_weights')
     ae_path = kwargs.get('ae_dir','./wae_metric/ae_model_weights')
     dataset = kwargs.get('dataset')
+    complex_mode = kwargs.get('complex_mode')
 
     if dataset == 'fft-scattering-coef':
         complex_mode = True
@@ -55,9 +56,9 @@ def run(**kwargs):
         print('Autoencoder Weight is not available! Please train the autoencoder first.')
         return
 
-    complex_mode = kwargs.get('complex_mode')
-
     input_sca = np.array(kwargs.get('input_sca'))
+    input_sca = np.reshape(input_sca, (1, -1))
+
     # input_img = kwargs.get('input_img')
 
     # # Load input image (SKIPPED)
@@ -72,7 +73,7 @@ def run(**kwargs):
     # Concatenate input_img and input_sca (SKIPPED) 
 
     if dataset == 'fft-scattering-coef':
-        dim_x = input_sca.shape[0]
+        dim_x = input_sca.shape[1]
         assert dim_x == 10, "There should be 10 input parameters."
 
         dim_y_img = 64 * 64 * 16
@@ -81,7 +82,7 @@ def run(**kwargs):
         print("Output (Image) Size: ", dim_y_img)
         print("Latent Space Dimension: ", dim_y_img_latent)
     else:
-        dim_x = input_sca.shape[0]
+        dim_x = input_sca.shape[1]
         assert dim_x == 5, "There should be 5 input parameters."
 
         dim_y_sca = 15
@@ -97,6 +98,8 @@ def run(**kwargs):
         x = tf.placeholder(tf.complex64, shape=[None, dim_x])
     else:
         x = tf.placeholder(tf.float32, shape=[None, dim_x])
+
+    train_mode = tf.placeholder(tf.bool,name='train_mode')
 
     # y_mm = tf.concat([y_img,y_sca],axis=1)
 
@@ -152,9 +155,7 @@ def run(**kwargs):
     
     # Output prediction
 
-    print('Predicted x (input parameters): ', pred_x)
-
-    inference_results(infer_dir, input_sca, pred_x, pred_y, dataset)
+    inference_results(infer_dir, input_sca, pred_x, pred_y, complex_mode, dataset)
     
     # Save pred_y to .mat
 
