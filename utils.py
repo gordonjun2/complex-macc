@@ -183,7 +183,7 @@ def plot_save(samples,figsize=(4,4),wspace=0.05,hspace=0.05,cmap='gray',resize=F
     return fig
 
 
-def plot_line(samples,gt,bar=True):
+def plot_line(dataset, samples,gt,bar=True):
     # plt.rcParams["figure.figsize"] = (10,20)
     if bar :
         fig = plt.figure(figsize=(20, 20))
@@ -192,13 +192,21 @@ def plot_line(samples,gt,bar=True):
 
     #
     width=0.35
-    params = ['stopping_mult', 'radiation_mult', 'ablation_cv', 'Vi',
-              'conduction_mult', 'shape_model_initial_velocity_amplitude',
-               'shape_model_initial_velocities:(1, 0)',
-                'shape_model_initial_velocities:(1, 1)',
-                 'shape_model_initial_velocities:(2, 0)',
-                  'shape_model_initial_velocities:(2, 1)',
-                   'shape_model_initial_velocities:(2, 2)']
+
+    if dataset == 'fft-scattering-coef':
+        params = ['RJ_scaled', 'phiJ_scaled', 'squintJ_scaled',
+                  'vJ_scaled', 'fc_scaled', 'prf_scaled',
+                  'x_px_scaled', 'y_px_scaled', 'x_off_scaled',
+                  'y_off_scaled']
+
+    else:
+        params = ['stopping_mult', 'radiation_mult', 'ablation_cv', 'Vi',
+                'conduction_mult', 'shape_model_initial_velocity_amplitude',
+                'shape_model_initial_velocities:(1, 0)',
+                    'shape_model_initial_velocities:(1, 1)',
+                    'shape_model_initial_velocities:(2, 0)',
+                    'shape_model_initial_velocities:(2, 1)',
+                    'shape_model_initial_velocities:(2, 2)']
     ind = np.arange(len(params))
 
     for i, sample in enumerate(samples):
@@ -206,12 +214,16 @@ def plot_line(samples,gt,bar=True):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         if bar:
-            ax.barh(ind,gt[i,:],width,color='red')
+            if gt is not None:
+                ax.barh(ind,gt[i,:],width,color='red')
+            else:
+                ax.barh(ind,width,color='red')
             ax.barh(ind+width,sample,width, color='blue')
             # plt.yticks(ind ,params,rotation=30)
             # ax.legend(['GT', 'Pred'])
         else:
-            plt.plot(gt[i,:])
+            if gt is not None:
+                plt.plot(gt[i,:])
             plt.plot(sample,'r.-')
 
     return fig
@@ -307,5 +319,60 @@ def test_imgs_plot(fdir,batch,data_dict, complex_mode, dataset):
     fig = plot_line(samples_x,x_test_mb,bar=False)
     plt.savefig('{}/x_{}.png'
                 .format(fdir,str(i).zfill(3)), bbox_inches='tight')
+    plt.close()
+    return
+
+def inference_results(infer_dir, gt_sca, pred_x, pred_y, dataset):
+
+    if dataset == 'fft-scattering-coef':
+        pred_y_img = pred_y.reshape(-1,64,64,16)
+    else:
+
+        mean_dist = meanEuclidDist(samples[-nTest:,:16384], y_img_test[-nTest:,:16384])
+        print('Mean Euclidean Distance between Ground Truth images and Predicted images: {:.4f}\n'
+            .format(mean_dist))
+
+        pred_y_sca =  pred_y[:,16384:]
+        pred_y_img =  pred_y[:,:16384].reshape(-1,64,64,4)
+
+    pred_y_img_plot = pred_y_img
+
+    if dataset != 'fft-scattering-coef':
+        fig = plot_line(pred_y_sca,None,bar=False)
+        plt.savefig('{}/y_sca_inferred.png'
+                    .format(infer_dir), bbox_inches='tight')
+        plt.close()
+
+    num_channels = np.shape(pred_y_img_plot)[3]
+
+    if complex_mode:
+
+        for idx in range(num_channels):
+
+            # Real
+            fig = plot(np.real(pred_y_img_plot),immax=np.max(np.real(pred_y_img_plot),axis=1),immin=np.min(np.real(pred_y_img_plot),axis=1))
+            plt.savefig('{}/y_real_img_inferred_{}.png'
+                        .format(infer_dir,str(idx)), bbox_inches='tight')
+            plt.close()
+
+            # Imaginary
+            fig = plot(np.imag(pred_y_img_plot),immax=np.max(np.imag(pred_y_img_plot),axis=1),immin=np.min(np.imag(pred_y_img_plot),axis=1))
+            plt.savefig('{}/y_imag_img_inferred_{}.png'
+                        .format(infer_dir,str(idx)), bbox_inches='tight')
+            plt.close()
+
+    else:
+
+        for idx in range(num_channels):
+            
+            fig = plot(pred_y_img_plot,immax=np.max(pred_y_img_plot,axis=1),immin=np.min(pred_y_img_plot,axis=1))
+            plt.savefig('{}/y_img_inferred_{}.png'
+                        .format(infer_dir,str(idx)), bbox_inches='tight')
+            plt.close()
+
+
+    fig = plot_line(pred_x, gt_sca, bar=False)
+    plt.savefig('{}/x_inferred.png'
+                .format(infer_dir), bbox_inches='tight')
     plt.close()
     return

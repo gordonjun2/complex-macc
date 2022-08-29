@@ -23,15 +23,29 @@ import wae_metric.model_AVB as wae
 from wae_metric.utils import special_normalize
 from wae_metric.run_WAE import LATENT_SPACE_DIM, load_dataset
 
+import scipy.io
+
 IMAGE_SIZE = 64
 
 def run(**kwargs):
-    fdir = kwargs.get('fdir', './surrogate_inference_results')
+    infer_dir = kwargs.get('infer_dir', './surrogate_inference_results')
     modeldir = kwargs.get('modeldir','./surrogate_model_weights')
     ae_path = kwargs.get('ae_dir','./wae_metric/ae_model_weights')
+    dataset = kwargs.get('dataset')
 
-    if not os.path.exists(fdir):
-        os.makedirs(fdir)
+    if dataset == 'fft-scattering-coef':
+        complex_mode = True
+        print('fft-scattering-coef data mode is selected...')
+    else:
+        print('icf-jag data mode is selected...')
+
+    if complex_mode:
+        print('Complex Mode is selected...')
+    else:
+        print('Non-complex Mode is selected...')
+
+    if not os.path.exists(infer_dir):
+        os.makedirs(infer_dir)
 
     if not os.path.exists(modeldir):
         print('Surrogate Model (Forward) Weight is not available! Please train the surrogate model first.')
@@ -43,22 +57,39 @@ def run(**kwargs):
 
     complex_mode = kwargs.get('complex_mode')
 
-    input_sca = kwargs.get('input_sca')
-    input_img = kwargs.get('input_img')
+    input_sca = np.array(kwargs.get('input_sca'))
+    # input_img = kwargs.get('input_img')
 
-    # Load input image (TODO)
+    # # Load input image (SKIPPED)
 
-    # Flatten input image (TODO)
-    print('Flattening input image...')
+    # # Flatten input image (SKIPPED)
+    # print('Flattening input image...')
 
-    flat_img = flatten_img(input_img)
+    # flat_img = flatten_img(input_img)
 
-    print("Inputs dimensions: ", input_img.shape, input_sca.shape)
+    # print("Inputs dimensions: ", input_img.shape, input_sca.shape)
 
-    # Concatenate input_img and input_sca (TODO) 
+    # Concatenate input_img and input_sca (SKIPPED) 
 
-    dim_x = inp_img_sca.shape[1]
-    dim_y_img_latent = LATENT_SPACE_DIM #latent space
+    if dataset == 'fft-scattering-coef':
+        dim_x = input_sca.shape[0]
+        assert dim_x == 10, "There should be 10 input parameters."
+
+        dim_y_img = 64 * 64 * 16
+        dim_y_img_latent = LATENT_SPACE_DIM #latent space
+        print("Input Size: ", dim_x)
+        print("Output (Image) Size: ", dim_y_img)
+        print("Latent Space Dimension: ", dim_y_img_latent)
+    else:
+        dim_x = input_sca.shape[0]
+        assert dim_x == 5, "There should be 5 input parameters."
+
+        dim_y_sca = 15
+        dim_y_img = 64 * 64 * 4
+        dim_y_img_latent = LATENT_SPACE_DIM #latent space
+        print("Input Size: ", dim_x)
+        print("Output (Image) Size: ", dim_y_img)
+        print("Latent Space Dimension: ", dim_y_img_latent)
 
     print('Initialising model...')
 
@@ -67,28 +98,28 @@ def run(**kwargs):
     else:
         x = tf.placeholder(tf.float32, shape=[None, dim_x])
 
-    train_mode = tf.placeholder(tf.bool,name='train_mode')
-
     # y_mm = tf.concat([y_img,y_sca],axis=1)
 
-    # Take out forward model from cycleGAN (TODO)
+    # Take out forward model from cycleGAN
     '''**** Train cycleGAN input params <--> latent space of (images, scalars) ****'''
 
-    cycGAN_params = {'input_params':x,
-                     'param_dim':dim_x,
-                     'outputs':y_latent_img,
-                     'output_dim':dim_y_img_latent,
-                     'L_adv':1e-2,
-                     'L_cyc':1e-1,
-                     'L_rec':1}
+    cycGAN_params_forward_only = {'input_params':x,
+                                  'param_dim':dim_x,
+                                  'output_dim':dim_y_img_latent,
+                                  'L_adv':1e-2,
+                                  'L_cyc':1e-1,
+                                  'L_rec':1}
 
-    JagNet_MM = cycModel_MM(**cycGAN_params)
-    JagNet_MM.run(train_mode, complex_mode)
+    JagNet_MM_forward_only = cycModel_MM_forward_only(**cycGAN_params_forward_only)
+    JagNet_MM_forward_only.run(train_mode, complex_mode)
 
-    # Take out decoder from autoencoder only (TODO)
+    # Take out decoder from autoencoder only
     '''**** Decode the prediction from latent vector --> img, scalars ****'''
     # Using the pretrained decoder from pretrained Multi-modal Wasserstein Autoencoder
-    y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca, train_mode = False, reuse = False, complex_mode = complex_mode)
+    if dataset == 'fft-scattering-coef':
+        y_img_out = wae.var_decoder_FCN(JagNet_MM_forward_only.output_fake, dim_y_img, train_mode = False, reuse = False, complex_mode = complex_mode)
+    else:
+        y_img_out = wae.var_decoder_FCN(JagNet_MM_forward_only.output_fake, dim_y_img+dim_y_sca, train_mode = False, reuse = False, complex_mode = complex_mode)
 
     # Separate weights for surrogate and decoder
     t_vars = tf.global_variables()
@@ -112,26 +143,26 @@ def run(**kwargs):
 
     print('Inference starts...')
 
-    # Fix fd (TODO)
-    fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
+    # Fix fd
+    fd = {x: input_sca, train_mode:False}
 
-    # Extract output (TODO)
-    gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
-                                    JagNet_MM.loss_gen1,
-                                    JagNet_MM.loss_adv],
-                                    feed_dict=fd)
+    # Extract output
+    pred_y, pred_x = sess.run([y_img_out,JagNet_MM_forward_only.input_cyc],
+                                feed_dict=fd)
+    
+    # Output prediction
 
-    # Print loss (TODO)
-    if it_total % 100 == 0:
-        print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-            .format(it_total, gloss0, gloss1))
-        print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
+    print('Predicted x (input parameters): ', pred_x)
 
-    # Save output image (TODO)
-    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+    inference_results(infer_dir, input_sca, pred_x, pred_y, dataset)
+    
+    # Save pred_y to .mat
+
+    if dataset == 'fft-scattering-coef':
+        pred_y_img = pred_y.reshape(-1,64,64,16)
+        scipy.io.savemat(infer_dir + '/pred_fft_img.mat', {'ft_fft10': pred_y_img})
+
 
 
 if __name__=='__main__':
     run()
-
-### srun -n 1 -N 1 -p pbatch -A lbpm --time=3:00:00 --pty /bin/sh

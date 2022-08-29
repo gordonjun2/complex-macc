@@ -12,28 +12,31 @@ from wae_metric import run_WAE as metric
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', type=str, default='out',
-                    help='Saving Results Directory')
+                    help='Saving Inference Results Directory')
 parser.add_argument('-ae_dir', type=str, default='./wae_metric/ae_model_weights',
                     help='Autoencoder weight')
 parser.add_argument('-cyc_dir', type=str, default='./surrogate_model_weights',
                     help='Surrogate (Forward) and Inverse Neural Network (Inverse) weight')
+parser.add_argument('-d', type=str, default='icf-jag',
+                    help='path to dataset - images, scalars, and input params')
 parser.add_argument('-input_sca', type=float, default=[],
-                    help='Input parameters for the simulation')
-parser.add_argument('-input_img', type=str, default='./sample_images/<image.jpg>',
-                    help='load a single input image')
+                    help='Input parameters for the simulation')                             # input parameters as list, e.g. [1, 2, 3, 4, ..]
+# parser.add_argument('-input_img', type=str, default='./sample_images/<image.jpg>',
+#                     help='load a single input image')                                     # NOT BEING IMPLEMENTED YET
 parser.add_argument('--complex_mode', action='store_true',
                     help='option to use non-complex and complex images')
 
 args = parser.parse_args()
-fdir = args.o
+infer_dir = args.o
 ae_dir = args.ae_dir
 cyc_dir = args.cyc_dir
+dataset = args.d
 input_sca = args.input_sca
-input_img = args.input_img
+# input_img = args.input_img
 complex_mode = args.complex_mode
 
 ae_dir_outs = './wae_metric/ae_outs'
 surrogate_dir_outs = './surrogate_inference_results'
 
 print('****** Simulating output from input using macc surrogate (forward) *******')
-surrogateForward.run(fdir=surrogate_dir_outs,modeldir=cyc_dir,ae_dir=ae_dir,complex_mode=complex_mode, input_sca = input_sca, input_img = input_img)
+surrogateForward.run(infer_dir=surrogate_dir_outs,modeldir=cyc_dir,ae_dir=ae_dir, dataset=dataset, complex_mode=complex_mode, input_sca = input_sca)
