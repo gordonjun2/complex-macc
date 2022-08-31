@@ -45,9 +45,9 @@ surrogate_dir_outs = './surrogate_outs'
 if args.train_ae:
     print('****** Training the autoencoder *******')
     metric.run(fdir=ae_dir_outs,modeldir=ae_dir, dataset=dataset, complex_mode=complex_mode, split_n = split_n, num_npy = num_npy)
-    print('****** Training the macc surrogate *******')
-    # cycGAN.run(fdir,mdir,ae_dir)
-    cycGAN.run(fdir=surrogate_dir_outs,modeldir=surrogate_dir,ae_dir=ae_dir,dataset=dataset, complex_mode=complex_mode, split_n = split_n, num_npy = num_npy)
+    # print('****** Training the macc surrogate *******')
+    # # cycGAN.run(fdir,mdir,ae_dir)
+    # cycGAN.run(fdir=surrogate_dir_outs,modeldir=surrogate_dir,ae_dir=ae_dir,dataset=dataset, complex_mode=complex_mode, split_n = split_n, num_npy = num_npy)
 else:
     print('****** Training the macc surrogate with pre-trained autoencoder *******')
     cycGAN.run(fdir=surrogate_dir_outs,modeldir=surrogate_dir,ae_dir=ae_dir, dataset=dataset, complex_mode=complex_mode, split_n = split_n, num_npy = num_npy)

@@ -354,7 +354,7 @@ def run(**kwargs):
             else:
                 X_train = jag_inp[tr_id,:]
                 y_sca_train = jag_sca[tr_id,:]
-                y_img_train = jag_img[tr_id,:]
+            y_img_train = jag_img[tr_id,:]
             for it in range(it_max//split_n):
 
                 if X_train.shape[0] < batch_size:
