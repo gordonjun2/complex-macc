@@ -15,7 +15,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from .model_AVB import *
 
-LATENT_SPACE_DIM = 20           # try 80 for dataset == 'fft-scattering-coef'
+LATENT_SPACE_DIM = 30           # try 80 for dataset == 'fft-scattering-coef'
 
 
 def sample_z(L,dim,type='uniform'):
@@ -225,7 +225,7 @@ def run(**kwargs):
                 X_train  = fft_img[tr_id,:]
                 X_test_set = fft_img[te_id,:]
 
-                for it in range(0, (it_max//num_py)//split_n):
+                for it in range(0, (it_max//num_npy)//split_n):
                     if X_train.shape[0] < batch_size:
                         batch_size = X_train.shape[0]
                     randid = np.random.choice(X_train.shape[0],batch_size,replace=False)

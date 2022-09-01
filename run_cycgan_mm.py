@@ -316,8 +316,8 @@ def run(**kwargs):
 
                     if (it_total+1) % 100 == 0:
                         print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-                            .format(it_total, gloss0, gloss1))
-                        if it_total % 500 == 0:
+                            .format(it_total+1, gloss0, gloss1))
+                        if (it_total+1) % 500 == 0:
                             print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}'.format(dloss,gadv))
                         else:
                             print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
@@ -326,7 +326,7 @@ def run(**kwargs):
                     if (it_total+1) % 500 == 0:
                         summary_val = sess.run(merged,feed_dict={x:X_test,y_img:y_img_test,train_mode:False})
 
-                        writer.add_summary(summary_val, it_total)
+                        writer.add_summary(summary_val, it_total+1)
 
                         nTest=16
                         x_temp_mb = x_inp_temp[-nTest:,:]
@@ -342,7 +342,7 @@ def run(**kwargs):
 
                         test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
-                        save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+                        save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total+1)+".ckpt")
 
                     it_total = it_total + 1
 
@@ -380,8 +380,8 @@ def run(**kwargs):
 
                 if (it_total+1) % 100 == 0:
                     print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-                        .format(it_total, gloss0, gloss1))
-                    if it_total % 500 == 0:
+                        .format(it_total+1, gloss0, gloss1))
+                    if (it_total+1) % 500 == 0:
                         print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}'.format(dloss,gadv))
                     else:
                         print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
@@ -394,7 +394,7 @@ def run(**kwargs):
 
                     summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
 
-                    writer.add_summary(summary_val, it_total)
+                    writer.add_summary(summary_val, it_total+1)
 
                     samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
                                                 feed_dict={x: x_test_mb,train_mode:False})
@@ -405,9 +405,9 @@ def run(**kwargs):
                     data_dict['y_img'] = y_img_test
                     data_dict['x'] = x_test_mb
 
-                    test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
+                    test_imgs_plot(fdir,it_total+1,data_dict, complex_mode, dataset)
 
-                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total+1)+".ckpt")
 
                 it_total = it_total + 1
 
