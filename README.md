@@ -4,6 +4,7 @@ Note:
 - *main.py* is the main entry.
 - Convolution is performed using *tf.matmul* instead of *tf.nn.conv2d* (read [here](https://ai.stackexchange.com/questions/11172/how-can-the-convolution-operation-be-implemented-as-a-matrix-multiplication))
 - Use ```python main.py --complex_mode --train_ae``` to train. (*--complex_mode* is to enable training on the complex images and *--train_ae* is to enable training for the WAE.)
+- Use ```python main.py --train_ae -d fft-scattering-coef --split_n 10 --num_npy 2 --ae_batch_size 1``` to test on the training for *fft-scattering-coef* dataset (use the sample data). 
 - To visualise tensorboard plots, change directory into *./tensorboard_plots* and then use ```tensorboard --logdir=<folder name>```, where *\<folder name>* is to be chosen.
 - To perform inference, use ```python inference_surrogate.py -d <dataset> --complex_mode```. (*--complex_mode* is to enable inference on complex images and select *icf-jag* or *fft-scattering-coef* for \<dataset>.)
 
