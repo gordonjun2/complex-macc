@@ -17,9 +17,9 @@ parser.add_argument('-d', type=str, default='icf-jag',
 parser.add_argument('--complex_mode', action='store_true',
                     help='option to use non-complex and complex images')
 parser.add_argument('--split_n', default=4, type=int, 
-                    help='split training data into split_n parts to reduce memory usage')       # use split_n = 1 when using fft dataset
+                    help='split training data into split_n parts to reduce memory usage')        # use split_n = 1 when using fft dataset
 parser.add_argument('--num_npy', default=10, type=int, 
-                    help='load num_npy of fft dataset parts at one time to reduce memory usage')
+                    help='load num_npy of fft dataset parts at one time to reduce memory usage') # for testing purpose, use 2 first
 parser.add_argument('--ae_batch_size', default=100, type=int, 
                     help='batch size for WAE training')
 parser.add_argument('--forward_batch_size', default=64, type=int, 

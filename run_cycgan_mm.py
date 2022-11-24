@@ -252,7 +252,10 @@ def run(**kwargs):
     metric_saver = tf.train.Saver(m_vars)
     saver = tf.train.Saver(list(set(t_vars)-set(m_vars)))
 
-    sess = tf.Session()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+
+    sess = tf.Session(config = config)
     sess.run(tf.global_variables_initializer())
 
     ckpt = tf.train.get_checkpoint_state(modeldir)

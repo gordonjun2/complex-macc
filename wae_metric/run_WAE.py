@@ -4,6 +4,7 @@ import pickle as pkl
 import argparse
 
 import tensorflow as tf
+
 import numpy as np
 np.random.seed(4321)
 
@@ -186,7 +187,10 @@ def run(**kwargs):
     D_solver = tf.train.RMSPropOptimizer(learning_rate=1e-4).minimize(D_loss,var_list=d_vars)
     G_solver = tf.train.RMSPropOptimizer(learning_rate=2e-4).minimize(G_loss,var_list=g_vars)
 
-    sess = tf.Session()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+
+    sess = tf.Session(config = config)
     sess.run(tf.global_variables_initializer())
 
     rec_summary = tf.summary.scalar(name='Recon_MSE', tensor=img_loss)
