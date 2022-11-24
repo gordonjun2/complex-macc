@@ -11,14 +11,12 @@ import os
 from wae_metric import run_WAE as metric
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-o', type=str, default='out',
-                    help='Saving Inference Results Directory')
 parser.add_argument('-ae_dir', type=str, default='./wae_metric/ae_model_weights',
                     help='Autoencoder weight')
 parser.add_argument('-cyc_dir', type=str, default='./surrogate_model_weights',
                     help='Surrogate (Forward) and Inverse Neural Network (Inverse) weight')
 parser.add_argument('-d', type=str, default='icf-jag',
-                    help='path to dataset - images, scalars, and input params')
+                    help='icf-jag or fft-scattering-coef, path to dataset - images, scalars, and input params')
 # parser.add_argument('-input_sca', type=float, default=[],
 #                     help='Input parameters for the simulation')                             # input parameters as list, e.g. [1, 2, 3, 4, ..]
 # parser.add_argument('-input_img', type=str, default='./sample_images/<image.jpg>',
@@ -27,7 +25,6 @@ parser.add_argument('--complex_mode', action='store_true',
                     help='option to use non-complex and complex images')
 
 args = parser.parse_args()
-infer_dir = args.o
 ae_dir = args.ae_dir
 cyc_dir = args.cyc_dir
 dataset = args.d
@@ -38,7 +35,6 @@ input_sca = [-0.07920084, 0.70821885, 0.377287, 0.12390906, 0.22148967]
 
 complex_mode = args.complex_mode
 
-ae_dir_outs = './wae_metric/ae_outs'
 surrogate_dir_outs = './surrogate_inference_results'
 
 print('****** Simulating output from input using macc surrogate (forward) *******')

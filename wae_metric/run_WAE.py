@@ -66,6 +66,7 @@ def run(**kwargs):
     complex_mode = kwargs.get('complex_mode')
     split_n = kwargs.get('split_n')
     num_npy = kwargs.get('num_npy')
+    batch_size = kwargs.get('batch_size')
 
     if dataset == 'fft-scattering-coef':
         complex_mode = True
@@ -78,8 +79,8 @@ def run(**kwargs):
     else:
         print('Non-complex Mode is selected...')
 
-    # if not os.path.exists(fdir):
-    #     os.makedirs(fdir)
+    if not os.path.exists(fdir):
+        os.makedirs(fdir)
 
     if not os.path.exists(modeldir):
         os.makedirs(modeldir)
@@ -137,10 +138,9 @@ def run(**kwargs):
         sub_X_train_len = len(tr_id)//split_n
         tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(split_n+1)]
 
-    batch_size = 100
-
     if batch_size > sub_X_train_len:
         batch_size = sub_X_train_len
+        print('Selected batch size is larger than splitted batch size... Using splitted batch size instead...')
 
     print('Batch Size: ', batch_size)
 
@@ -202,7 +202,9 @@ def run(**kwargs):
 
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
-        print("************ Model restored! **************")
+        print("************ Model Restored! **************")
+    else:
+        print("******* No Pretrained Model Found! ********")
 
     print('Training starts...')
         
@@ -211,6 +213,8 @@ def run(**kwargs):
         it_max = 400000
     else:
         it_max = 100000
+
+    print('A total of ' + str(it_max) + ' data iteration is selected for the training...')
 
     if dataset == 'fft-scattering-coef':
 
@@ -262,8 +266,11 @@ def run(**kwargs):
 
                         ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
-                    if (it_total+1)%10000==0:
-                        save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+                    if (it_total+1)%(it_max//10)==0:
+                        if complex_mode:
+                            save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_complex_model_"+str(it_total)+".ckpt")
+                        else:
+                            save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_model_"+str(it_total)+".ckpt")
 
                     it_total = it_total + 1
 
@@ -307,8 +314,11 @@ def run(**kwargs):
 
                     ae_test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
-                if (it_total+1)%10000==0:
-                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total)+".ckpt")
+                if (it_total+1)%(it_max//10)==0:
+                    if complex_mode:
+                        save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_complex_model_"+str(it_total)+".ckpt")
+                    else:
+                        save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_model_"+str(it_total)+".ckpt")
 
                 it_total = it_total + 1
 

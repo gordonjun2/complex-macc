@@ -29,9 +29,10 @@ batch_size = 64
 
 def run(**kwargs):
     fdir = kwargs.get('fdir', './surrogate_outs')
-    modeldir = kwargs.get('modeldir','./pretrained_model')
-    ae_path = kwargs.get('ae_dir','./wae_metric/pretrained_model')
+    modeldir = kwargs.get('modeldir','./surrogate_model_weights')
+    ae_path = kwargs.get('ae_dir','./wae_metric/ae_model_weights')
     dataset = kwargs.get('dataset')
+    batch_size = kwargs.get('batch_size')
 
     visdir = './tensorboard_plots'
     if not os.path.exists(fdir):
@@ -115,10 +116,9 @@ def run(**kwargs):
         sub_X_train_len = len(tr_id)//split_n
         tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(split_n+1)]
 
-    batch_size = 64
-
     if batch_size > sub_X_train_len:
         batch_size = sub_X_train_len
+        print('Selected batch size is larger than splitted batch size... Using splitted batch size instead...')
 
     print('Batch Size: ', batch_size)
 
@@ -259,12 +259,16 @@ def run(**kwargs):
     ckpt_metric = tf.train.get_checkpoint_state(ae_path)
 
     if ckpt_metric and ckpt_metric.model_checkpoint_path:
-           metric_saver.restore(sess, ckpt_metric.model_checkpoint_path)
-           print("************ Image Metric Restored! **************")
+        metric_saver.restore(sess, ckpt_metric.model_checkpoint_path)
+        print("************ Image Metric Restored! **************")
+    else:
+        print("************ No Image Metric Found! **************")
 
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
-        print("************ Model restored! **************")
+        print("************ Model Restored! **************")
+    else:
+        print("******* No Pretrained Model Found! ********")
 
     writer = tf.summary.FileWriter(visdir+'/{}'.format(modeldir), sess.graph)
 
@@ -275,6 +279,8 @@ def run(**kwargs):
         it_max = 400000
     else:
         it_max = 100000
+
+    print('A total of ' + str(it_max) + ' data iteration is selected for the training...')
 
     if dataset == 'fft-scattering-coef':
 
@@ -292,7 +298,7 @@ def run(**kwargs):
                 X_test = np.complex64(fft_inp[te_id,:])
                 y_img_test = fft_img[te_id,:]
 
-                for it in range(0, (it_max//num_py)//split_n):
+                for it in range(0, (it_max//num_npy)//split_n):
 
                     if X_train.shape[0] < batch_size:
                         batch_size = X_train.shape[0]
@@ -342,7 +348,11 @@ def run(**kwargs):
 
                         test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
-                        save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total+1)+".ckpt")
+                    if (it_total+1)%(it_max//100)==0:
+                        if complex_mode:
+                            save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_complex_model_"+str(it_total)+".ckpt")
+                        else:
+                            save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_model_"+str(it_total)+".ckpt")
 
                     it_total = it_total + 1
 
@@ -407,7 +417,11 @@ def run(**kwargs):
 
                     test_imgs_plot(fdir,it_total+1,data_dict, complex_mode, dataset)
 
-                    save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it_total+1)+".ckpt")
+                if (it_total+1)%(it_max//100)==0:
+                    if complex_mode:
+                        save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_complex_model_"+str(it_total)+".ckpt")
+                    else:
+                        save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_model_"+str(it_total)+".ckpt")
 
                 it_total = it_total + 1
 

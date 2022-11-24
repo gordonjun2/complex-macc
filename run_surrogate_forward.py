@@ -137,12 +137,22 @@ def run(**kwargs):
     ckpt_metric = tf.train.get_checkpoint_state(ae_path)
 
     if ckpt_metric and ckpt_metric.model_checkpoint_path:
-           metric_saver.restore(sess, ckpt_metric.model_checkpoint_path)
-           print("************ Image Metric Restored! **************")
+        metric_saver.restore(sess, ckpt_metric.model_checkpoint_path)
+        print("************ Image Metric Restored! **************")
+    else:
+        print("************ No Image Metric Found! **************")
+        print('Please train the WAE first!')
+
+        return
 
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
         print("************ Model restored! **************")
+    else:
+        print("******* No Pretrained Model Found! ********")
+        print('Please train the surrogate forward model first!')
+
+        return
 
     print('Inference starts...')
 
