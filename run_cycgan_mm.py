@@ -220,7 +220,7 @@ def run(**kwargs):
                      'output_dim':dim_y_img_latent,
                      'L_adv':1e-2,
                      'L_cyc':1e-1,
-                     'L_rec':1}
+                     'L_rec':1}                 # initial L_adv = 1e-2, initial L_cyc = 1e-1, initial L_rec = 1
 
     JagNet_MM = cycModel_MM(**cycGAN_params)
     JagNet_MM.run(train_mode, complex_mode)
