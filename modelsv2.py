@@ -56,7 +56,7 @@ class cycModel_MM(object):
                 output_imag = tf.imag(self.output)
                 input_real = tf.real(self.input)
                 input_imag = tf.imag(self.input)
-
+                
                 x_real = tf.concat([output_real, input_real], axis=1)
                 x_imag = tf.concat([output_imag, input_imag], axis=1)
 
@@ -155,6 +155,7 @@ class cycModel_MM(object):
 
                 real_out = tf_real_real - tf_imag_imag
                 imag_out = tf_imag_real + tf_real_imag
+                
                 out = tf.complex(real_out, imag_out)
 
             else:
@@ -479,7 +480,7 @@ class cycModel_MM(object):
 
         D_real,d_out_real = self.fc_disc0(train_mode, complex_mode)
         D_fake,d_out_fake = self.fc_disc0(train_mode, complex_mode, reuse=True)
-
+        
         D_loss1,G_adv1 = GANloss(D_real,D_fake, complex_mode)
 
         output_m = self.output

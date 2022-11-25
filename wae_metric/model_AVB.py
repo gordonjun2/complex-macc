@@ -41,7 +41,12 @@ def gen_encoder_FCN(x, n_output, train_mode, reuse=False, complex_mode=False):
 
             h0_real = bn(real_out, train_mode,"bn1_real")
             h0_imag = bn(imag_out, train_mode,"bn1_imag")
-
+            
+#             # BN issue
+#             h0_real = tf.Print(h0_real, [h0_real])
+#             h0_imag = tf.Print(h0_imag, [h0_imag])
+#             #
+            
             h0_real = tf.nn.elu(h0_real)
             h0_imag = tf.nn.elu(h0_imag)
 
@@ -142,6 +147,9 @@ def gen_encoder_FCN(x, n_output, train_mode, reuse=False, complex_mode=False):
 
             real_out = tf_real_real - tf_imag_imag
             imag_out = tf_imag_real + tf_real_imag
+            
+#             real_out = tf.Print(real_out, [real_out])
+#             imag_out = tf.Print(imag_out, [imag_out])
 
             z = tf.complex(real_out, imag_out)
 

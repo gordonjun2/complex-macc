@@ -23,6 +23,8 @@ import wae_metric.model_AVB as wae
 from wae_metric.utils import special_normalize
 from wae_metric.run_WAE import LATENT_SPACE_DIM, load_dataset, load_fft_dataset_actual
 
+import math
+
 IMAGE_SIZE = 64
 batch_size = 64
 
@@ -287,7 +289,7 @@ def run(**kwargs):
 
     if dataset == 'fft-scattering-coef':
 
-        for i in range(num_npy):
+        for i in range(math.ceil(len(fft_img_files_list)/num_npy)):
             fft_img_files_list_split = fft_img_files_list[i*num_npy:i*num_npy+num_npy]
             fft_inp_files_list_split = fft_inp_files_list[i*num_npy:i*num_npy+num_npy]
 
@@ -301,7 +303,7 @@ def run(**kwargs):
                 X_test = np.complex64(fft_inp[te_id,:])
                 y_img_test = fft_img[te_id,:]
 
-                for it in range(0, (it_max//num_npy)//split_n):
+                for it in range(0, (it_max//math.ceil(len(fft_img_files_list)/num_npy))//split_n):
 
                     if X_train.shape[0] < batch_size:
                         batch_size = X_train.shape[0]
@@ -319,7 +321,7 @@ def run(**kwargs):
                                                     JagNet_MM.loss_gen1,
                                                     JagNet_MM.loss_adv],
                                                     feed_dict=fd)
-
+                    
                     for _ in range(1):
                         _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
 
@@ -427,55 +429,10 @@ def run(**kwargs):
                         save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_model_"+str(it_total)+".ckpt")
 
                 it_total = it_total + 1
-
-    # else:
-
-    #     for it in range(100000):
-
-    #         randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
-    #         x_mb = X_train[randid,:]
-    #         y_img_mb = y_img_train[randid,:]
-    #         y_sca_mb = y_sca_train[randid,:]
-
-    #         fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
-
-    #         for _ in range(10):
-    #             _,dloss = sess.run([JagNet_MM.D_solver,JagNet_MM.loss_disc],feed_dict=fd)
-
-    #         gloss0,gloss1,gadv = sess.run([JagNet_MM.loss_gen0,
-    #                                         JagNet_MM.loss_gen1,
-    #                                         JagNet_MM.loss_adv],
-    #                                         feed_dict=fd)
-
-    #         for _ in range(1):
-    #             _ = sess.run([JagNet_MM.G0_solver],feed_dict=fd)
-
-    #         if it % 100 == 0:
-    #             print('Fidelity -- Iter: {}; Forward: {:.4f}; Inverse: {:.4f}'
-    #                 .format(it, gloss0, gloss1))
-    #             print('Adversarial -- Disc: {:.4f}; Gen: {:.4f}\n'.format(dloss,gadv))
-
-
-    #         if it % 500 == 0:
-
-    #             nTest=16
-    #             x_test_mb = X_test[-nTest:,:]
-    #             summary_val = sess.run(merged,feed_dict={x:X_test,y_sca:y_sca_test,y_img:y_img_test,train_mode:False})
-
-    #             writer.add_summary(summary_val, it)
-
-    #             samples,samples_x = sess.run([y_img_out,JagNet_MM.input_cyc],
-    #                                         feed_dict={x: x_test_mb,train_mode:False})
-    #             data_dict= {}
-    #             data_dict['samples'] = samples
-    #             data_dict['samples_x'] = samples_x
-    #             data_dict['y_sca'] = y_sca_test
-    #             data_dict['y_img'] = y_img_test
-    #             data_dict['x'] = x_test_mb
-
-    #             test_imgs_plot(fdir,it,data_dict)
-
-    #             save_path = saver.save(sess, "./"+modeldir+"/model_"+str(it)+".ckpt")
+                
+    print('Surrogate Training Completed...')
+    
+    return
 
 if __name__=='__main__':
     run()
