@@ -1,12 +1,115 @@
 ***
 
-Note: 
-- *main.py* is the main entry.
-- Convolution is performed using *tf.matmul* instead of *tf.nn.conv2d* (read [here](https://ai.stackexchange.com/questions/11172/how-can-the-convolution-operation-be-implemented-as-a-matrix-multiplication))
-- Use ```python main.py --complex_mode --train_ae``` to train. (*--complex_mode* is to enable training on the complex images and *--train_ae* is to enable training for the WAE.)
-- Use ```python main.py --train_ae -d fft-scattering-coef --split_n 10 --num_npy 2 --ae_batch_size 1``` to test on the training for *fft-scattering-coef* dataset (use the sample data). 
+# Complex-MaCC
+
+This repository is forked from
+[LLNL/macc](https://github.com/LLNL/macc) with complex-valued convolutions from [MRSRL/complex-networks-release](https://github.com/MRSRL/complex-networks-release).
+
+## Installation
+
+1. Create a notebook in Kubeflow AI-Stack.
+2. Select *ngc-tensorflow:22.03-tf1-py3* as the image.
+3. Set *Requested CPUs* as 8 and *Requested memory in Gi* as 16.
+4. Set *Number of GPUs* as 1 and *GPU Vendor* as NVIDA.
+5. Select *Enable Shared Memory* under Miscellaneous Settings (based on AI-Stack  default instruction).
+6. Click *Launch* and done!
+
+The image selected in Step 2 has a working environment to run this repository. If there are any uninstalled packages, simply install them inside the notebook.
+
+## Usage
+
+### Data Preparation
+
+To use the inertial confinement fusion dataset, *icf-jag*,
+
+1. Extract the *./data/icf-jag-10k.tar.gz* file using 7zip or command prompt.
+2. Extract the *./data/icf-jag-10k.tar/icf-jag-10k.tar* file using 7zip or command prompt.
+3. Rearrange the *./data* directory so that it is:
+```
+complex-macc/
+	data/
+		icf-jag-10k/
+			jag10K_0_scalars.npy
+			jag10K_images.npy
+			jag10K_params.npy
+		fft_data_preprocessing.py
+	wae_metric/
+		...
+	<other files>/
+	...
+```
+4. [optional] Delete *./data/icf-jag-10k.tar.gz* file.
+5. Run the command below to convert *icf-jag* image data from float32 to complex64.
+```
+python ./data/icf-jag_complex_data_preprocessing.py
+```
+6. Done!
+
+To use the FT scattering coefficient dataset, *fft-scattering-coef*,
+
+1. Generate data in SAR Simulator side first with ```macc_data_gen``` in 
+```
+[vMaCC Data Generation] SAR_Simulator (PJ)_edited/
+	macc_data_gen.m
+	<other files>/
+	...
+```
+2. Run the command below in the *[vMaCC Data Generation] SAR_Simulator (PJ)_edited* directory to convert the generated *.mat* files into *.npy* files.
+```
+python ./macc_data/python_data/data_preprocessing.py
+```
+3. Copy the *./macc_data/python_data/fft-scattering-coef-40k* folder from the SAR Simulator to *./data/*. The directory will be arranged as
+```
+complex-macc/
+	data/
+		icf-jag-10k/
+			jag10K_0_scalars.npy
+			jag10K_images.npy
+			jag10K_params.npy
+		fft-scattering-coef-40k/
+			fft40K_images/
+				fft40K_images_1.npy
+				fft40K_images_2.npy
+				...
+			fft40K_params/
+				fft40K_params_1.npy
+				fft40K_params_2.npy
+				...
+		fft_data_preprocessing.py
+	wae_metric/
+		...
+	<other files>/
+	...
+```
+4. Done!
+
+### Training
+- To train, use the command below. *--complex_mode* is to enable training on the complex images. *--train_ae* is to enable training for the Autoencoder, else the Surrogate Forwarda and Inverse Model. Please read *main.py* for more information on the arguments to be parsed.
+```
+python main.py -d <icf-jag or fft-scattering-coef> <--complex_mode> <--train_ae>
+
+eg.
+python main.py -d icf-jag --complex_mode --train_ae
+python main.py -d icf-jag --complex_mode
+``` 
+- To test the training on sample data of *fft-scattering-coef*, use
+```
+python main.py --train_ae -d fft-scattering-coef --split_n 10 --num_npy 2
+```
 - To visualise tensorboard plots, change directory into *./tensorboard_plots* and then use ```tensorboard --logdir=<folder name>```, where *\<folder name>* is to be chosen.
-- To perform inference, use ```python inference_surrogate.py -d <dataset> --complex_mode```. (*--complex_mode* is to enable inference on complex images and select *icf-jag* or *fft-scattering-coef* for \<dataset>.)
+
+### Inference
+- To perform inference, use the command below. *--complex_mode* is to enable inference on complex images.
+```
+python inference_surrogate.py -d <icf-jag or fft-scattering-coef> <--complex_mode>
+
+eg.
+python inference_surrogate.py -d icf-jag --complex_mode
+``` 
+
+## Note: 
+- Comments are written in the scripts to help with the understanding of the codes.
+- Convolution is performed using *tf.matmul* instead of *tf.nn.conv2d* (read [here](https://ai.stackexchange.com/questions/11172/how-can-the-convolution-operation-be-implemented-as-a-matrix-multiplication))
 
 ***
 
