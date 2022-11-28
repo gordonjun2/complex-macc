@@ -14,6 +14,9 @@ from sklearn.preprocessing import MinMaxScaler, scale
 
 from utils import *
 
+# The complex-valued convolutions are implemented here. See the lines under the 'complex_mode' conditional statements to 
+# check the differences between the non-complex-valued convolutions (original) and the complex-valued convolutions.
+
 
 class cycModel_MM(object):
     def __init__(self,input_params,param_dim,outputs,output_dim,L_adv,L_cyc,L_rec):

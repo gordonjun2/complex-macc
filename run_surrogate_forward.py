@@ -28,12 +28,14 @@ import scipy.io
 IMAGE_SIZE = 64
 
 def run(**kwargs):
+    # Retrieves the argument variables in './inference_surrogate.py'
     infer_dir = kwargs.get('infer_dir', './surrogate_inference_results')
     modeldir = kwargs.get('modeldir','./surrogate_model_weights')
     ae_path = kwargs.get('ae_dir','./wae_metric/ae_model_weights')
     dataset = kwargs.get('dataset')
     complex_mode = kwargs.get('complex_mode')
 
+    # Selecting dataset as 'fft-scattering-coef' forces the 'complex_mode' to switch on
     if dataset == 'fft-scattering-coef':
         complex_mode = True
         print('fft-scattering-coef data mode is selected...')
@@ -94,6 +96,18 @@ def run(**kwargs):
 
     print('Initialising model...')
 
+    # Tensorflow placeholder and function initialisation stage
+    # Note: In Tensorflow, a computational graph has to be set up before data for training can be fit into it. The 
+    # computational graph is created based on the data size and the selected network size. A simple analogy would 
+    # be a subway system (might not be inaccurate..):
+    # - Purchase a train model (data)
+    # - Create railway tunnels and tracks based on the train model (neural network)
+    # - Once the railway tunnels and tracks are created, the train can finally be deployed (data --> neural network 
+    # model) 
+    #
+    # Also, the data type of the graph will also be initialised according to the data type of the input. If 
+    # 'complex_mode' is on, 'complex64' will be used, else, 'float32' is used.
+
     if complex_mode:
         x = tf.placeholder(tf.complex64, shape=[None, dim_x])
     else:
@@ -136,6 +150,8 @@ def run(**kwargs):
     ckpt = tf.train.get_checkpoint_state(modeldir)
     ckpt_metric = tf.train.get_checkpoint_state(ae_path)
 
+    # 'ckpt_metric.model_checkpoint_path' checks and reads the 'checkpoint' file in './wae_metric/ae_model_weights'.
+    # A pretrained Autoencoder is required. If it does not exist, the program will stop.
     if ckpt_metric and ckpt_metric.model_checkpoint_path:
         metric_saver.restore(sess, ckpt_metric.model_checkpoint_path)
         print("************ Image Metric Restored! **************")
@@ -145,6 +161,8 @@ def run(**kwargs):
 
         return
 
+    # 'ckpt.model_checkpoint_path' checks and reads the 'checkpoint' file in './surrogate_model_weights'.
+    # A pretrained Surrogate Forward and Inverse Model is required. If it does not exist, the program will stop.
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
         print("************ Model restored! **************")
@@ -156,7 +174,9 @@ def run(**kwargs):
 
     print('Inference starts...')
 
-    # Fix fd
+    # Inference starts here
+
+    # Feed dictionary for inference (or the inputs to the trained model)
     fd = {x: input_sca, train_mode:False}
 
     # Extract output
@@ -164,16 +184,16 @@ def run(**kwargs):
                                 feed_dict=fd)
     
     # Output prediction
-
+    # Continues at './utils.py'
     inference_results(infer_dir, input_sca, pred_x, pred_y, complex_mode, dataset)
     
-    # Save pred_y to .mat
-
     if dataset == 'fft-scattering-coef':
+        # Save pred_y to .mat (NOT TESTED)
         pred_y_img = pred_y.reshape(-1,64,64,16)
         scipy.io.savemat(infer_dir + '/pred_fft_img.mat', {'ft_fft10': pred_y_img})
 
 
 
 if __name__=='__main__':
+    # Script starts to enter here
     run()

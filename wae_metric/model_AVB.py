@@ -5,6 +5,9 @@ import tensorflow as tf
 from .utils import *
 from .utils import spectral_norm as SN
 
+# The complex-valued convolutions are implemented here. See the lines under the 'complex_mode' conditional statements to 
+# check the differences between the non-complex-valued convolutions (original) and the complex-valued convolutions.
+
 
 def xavier_init(size,name=None):
     in_dim = size[0]

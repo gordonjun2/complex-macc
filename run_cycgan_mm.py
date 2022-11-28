@@ -25,11 +25,11 @@ from wae_metric.run_WAE import LATENT_SPACE_DIM, load_dataset, load_fft_dataset_
 
 import math
 
+# 'IMAGE_SIZE' is kept as 64 for both 'icf-jag' and 'fft-scattering-coef' dataset.
 IMAGE_SIZE = 64
-batch_size = 64
-
 
 def run(**kwargs):
+    # Retrieves the argument variables in './main.py'
     fdir = kwargs.get('fdir', './surrogate_outs')
     modeldir = kwargs.get('modeldir','./surrogate_model_weights')
     ae_path = kwargs.get('ae_dir','./wae_metric/ae_model_weights')
@@ -50,6 +50,7 @@ def run(**kwargs):
     split_n = kwargs.get('split_n')
     num_npy = kwargs.get('num_npy')
 
+    # Selecting dataset as 'fft-scattering-coef' forces the 'complex_mode' to switch on
     if dataset == 'fft-scattering-coef':
         complex_mode = True
         print('fft-scattering-coef dataset is selected...')
@@ -63,9 +64,13 @@ def run(**kwargs):
 
     print('Loading dataset...')
 
+    # To read dataset directory / load dataset and get randomised training and testing data indexes to be used in training later 
     if dataset == 'fft-scattering-coef':
         
         fft_datapath = './data/fft-scattering-coef-40k/'
+
+        # For Surrogate Forward and Inverse Model's training, both images (for Autoencoder part) and scalar inputs (for Surrogate Forward and Inverse Model) part) are used.
+        # Read the dataset directory first (NO LOADING yet)
 
         fft_img_datapath = fft_datapath + 'fft40K_images/'
         fft_img_files_list = os.listdir(fft_img_datapath)
@@ -75,9 +80,13 @@ def run(**kwargs):
 
         fft_data_size_per_npy_set = num_npy * 100                   # Each npy has 100 data, thus total data is num_npy * 100
 
+        # Randomised training and testing data indexes to be used in training later (to prevent training bias in ordering)
+        # For example, there are 10 data. Let no. of training data be 8 and no. of testing data be 2. 
+        # A randomised 'tr_id' can be [0, 8, 4, 5, 6, 7, 3, 2], while a randomised 'te_id' is [1, 9].
         tr_id = np.random.choice(fft_data_size_per_npy_set,int(fft_data_size_per_npy_set*0.95),replace=False)
         te_id = list(set(range(fft_data_size_per_npy_set)) - set(tr_id))
 
+        # A sample .npy is loaded in order to plot the sample ground truth data below
         fft_img_files_list_temp = ['fft40K_images_1.npy']
         fft_img_temp = load_fft_dataset_actual(fft_img_datapath, fft_img_files_list_temp)
         
@@ -91,8 +100,12 @@ def run(**kwargs):
         x_inp_temp = fft_inp_temp
 
     else:
+        # Unlike 'fft-scattering-coef', the data in 'icf-jag' is fully loaded to memory first (but not to training).
         jag_inp, jag_sca, jag_img = load_dataset(complex_mode)
 
+        # Randomised training and testing data indexes to be used in training later (to prevent training bias in ordering)
+        # For example, there are 10 data. Let no. of training data be 8 and no. of testing data be 2. 
+        # A randomised 'tr_id' can be [0, 8, 4, 5, 6, 7, 3, 2], while a randomised 'te_id' is [1, 9].
         tr_id = np.random.choice(jag_sca.shape[0],int(jag_sca.shape[0]*0.95),replace=False)
         te_id = list(set(range(jag_sca.shape[0])) - set(tr_id))
 
@@ -109,25 +122,31 @@ def run(**kwargs):
     
     print('Splitting dataset indexes...')
 
+    # The dataset is splitted up into 'split_n' parts according to the argument variable used in './main.py'.
+    # 'sub_X_train_len' is the training length per 'split_n' parts. For example (using the example above), there are 8 training 
+    # data. If split_n = 2, sub_X_train_len = 8 / 2 = 4. Then tr_id = [0, 8, 4, 5, 6, 7, 3, 2] will be splitted into tr_id_split 
+    # = [[0, 8, 4, 5], [6, 7, 3, 2]]. As a result, indexes [0, 8, 4, 5] will be loaded first, then it will be replaced by 
+    # indexes [6, 7, 3, 2].
     sub_X_train_len = len(tr_id)/split_n
 
     if sub_X_train_len % 1 == 0:
+        # Enters if 'sub_X_train_len' is an integer (no remainder)
         sub_X_train_len = int(sub_X_train_len)
         tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] for i in range(split_n)]
     else:
+        # Enters if 'sub_X_train_len' is not an integer (got remainder, so the last set of indexes is shorter than 'sub_X_train_len')
         sub_X_train_len = len(tr_id)//split_n
         tr_id_split = [tr_id[i*sub_X_train_len:i*sub_X_train_len+sub_X_train_len] if i < sub_X_train_len else tr_id[i*sub_X_train_len:] for i in range(split_n+1)]
 
+    # 'batch_size' cannot be more than 'sub_X_train_len'(cannot process more than what is there). Thus, if 'batch_size' is larger 
+    # than 'sub_X_train_len', use 'sub_X_train_len' as batch_size instead.
     if batch_size > sub_X_train_len:
         batch_size = sub_X_train_len
         print('Selected batch size is larger than splitted batch size... Using splitted batch size instead...')
 
     print('Batch Size: ', batch_size)
 
-    # X_train = jag_inp[tr_id,:]
-    # y_sca_train = jag_sca[tr_id,:]
-    # y_img_train = jag_img[tr_id,:]
-
+    # Plot sample ground truth data
     if dataset == 'fft-scattering-coef':
         ks = 16
 
@@ -193,6 +212,18 @@ def run(**kwargs):
 
     print('Initialising model...')
 
+    # Tensorflow placeholder and function initialisation stage
+    # Note: In Tensorflow, a computational graph has to be set up before data for training can be fit into it. The 
+    # computational graph is created based on the data size and the selected network size. A simple analogy would 
+    # be a subway system (might not be inaccurate..):
+    # - Purchase a train model (data)
+    # - Create railway tunnels and tracks based on the train model (neural network)
+    # - Once the railway tunnels and tracks are created, the train can finally be deployed (data --> neural network 
+    # model) 
+    #
+    # Also, the data type of the graph will also be initialised according to the data type of the input. If 
+    # 'complex_mode' is on, 'complex64' will be used, else, 'float32' is used.
+
     if complex_mode:
         if dataset != 'fft-scattering-coef':
             y_sca = tf.placeholder(tf.complex64, shape=[None, dim_y_sca])
@@ -234,6 +265,7 @@ def run(**kwargs):
     else:
         y_img_out = wae.var_decoder_FCN(JagNet_MM.output_fake, dim_y_img+dim_y_sca, train_mode = False, reuse = False, complex_mode = complex_mode)
 
+    # Note: 16384 = 64 x 64 x 4 ('icf-jag' image has a resolution of 64 x 64 pixel size with 4 channels.).
     if complex_mode:
         if dataset == 'fft-scattering-coef':
             img_loss = tf.reduce_mean(tf.square(tf.abs(y_img_out - y_img)))
@@ -263,12 +295,18 @@ def run(**kwargs):
     ckpt = tf.train.get_checkpoint_state(modeldir)
     ckpt_metric = tf.train.get_checkpoint_state(ae_path)
 
+    # 'ckpt_metric.model_checkpoint_path' checks and reads the 'checkpoint' file in './wae_metric/ae_model_weights'.
+    # A pretrained Autoencoder is required. If it does not exist, the program will stop.
     if ckpt_metric and ckpt_metric.model_checkpoint_path:
         metric_saver.restore(sess, ckpt_metric.model_checkpoint_path)
         print("************ Image Metric Restored! **************")
     else:
         print("************ No Image Metric Found! **************")
+        print('Please train the WAE first!')
 
+        return
+
+    # 'ckpt.model_checkpoint_path' checks and reads the 'checkpoint' file in './surrogate_model_weights'.
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
         print("************ Model Restored! **************")
@@ -287,15 +325,26 @@ def run(**kwargs):
 
     print('A total of ' + str(it_max) + ' data iteration is selected for the training...')
 
+    # Training starts here
+
     if dataset == 'fft-scattering-coef':
 
+        # 'fft_img_files_list' and 'fft_inp_files_list' are lists that contains all the .npy file names for both images and scalar 
+        # inputs. 'math.ceil(len(fft_img_files_list)/num_npy)' refers to the no. of time a set of .npy files is being loaded. For 
+        # example, len(fft_img_files_list) = 10 and num_npy = 2. Then, math.ceil(len(fft_img_files_list)/num_npy) = 10 / 2 = 5. 
+        # This means 2 .npy files will be loaded per 'for' loop, and there will be 5 loops in total. For the purpose of being 
+        # general, 'math.ceil' rounds the division up in case len(fft_img_files_list)/num_npy is not integer. The same is applied 
+        # to 'fft_inp_files_list'.
         for i in range(math.ceil(len(fft_img_files_list)/num_npy)):
             fft_img_files_list_split = fft_img_files_list[i*num_npy:i*num_npy+num_npy]
             fft_inp_files_list_split = fft_inp_files_list[i*num_npy:i*num_npy+num_npy]
 
+            # 'fft_img' and 'fft_inp' are the actual data used to train the neural network
             fft_img = load_fft_dataset_actual(fft_img_datapath, fft_img_files_list_split)
             fft_inp = load_fft_dataset_actual(fft_inp_datapath, fft_inp_files_list_split)
 
+            # While 'fft_img' and 'fft_inp' are being loaded to memory (RAM), they are not loaded into the GPU. The data is further 
+            # splitted according to 'tr_id_split' (see above).
             for tr_id in tr_id_split:
                 X_train = np.complex64(fft_inp[tr_id,:])
                 y_img_train = fft_img[tr_id,:]
@@ -303,15 +352,24 @@ def run(**kwargs):
                 X_test = np.complex64(fft_inp[te_id,:])
                 y_img_test = fft_img[te_id,:]
 
+                # '(it_max//math.ceil(len(fft_img_files_list)/num_npy))//split_n' refers to the number of iteration a set of data is 
+                # being used for training. As established above, 'math.ceil(len(fft_img_files_list)/num_npy)' refers to the no. of 
+                # time a set of .npy files is being loaded. Then 'it_max//math.ceil(len(fft_img_files_list)/num_npy)' refers to the 
+                # no. of training iteration per a set of .npy files that is being loaded. Then for every set of .npy files that is 
+                # being loaded, only a subset of data will be loaded onto the GPU for training at once. This is governed by the 
+                # 'split_n' (see above). Thus, with '(it_max//math.ceil(len(fft_img_files_list)/num_npy))//split_n', every subset of 
+                # data will be given equal (statistically) no. of chance to be trained on.
                 for it in range(0, (it_max//math.ceil(len(fft_img_files_list)/num_npy))//split_n):
 
                     if X_train.shape[0] < batch_size:
                         batch_size = X_train.shape[0]
 
+                    # The training indexes per subset of data is randomised
                     randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
                     x_mb = X_train[randid,:]
                     y_img_mb = y_img_train[randid,:]
                     
+                    # Feed dictionary for training (or the inputs to the training model)
                     fd = {x: x_mb,y_img:y_img_mb,train_mode:True}
 
                     for _ in range(10):
@@ -351,8 +409,11 @@ def run(**kwargs):
                         data_dict['y_img'] = y_img_temp_mb
                         data_dict['x'] = x_temp_mb
 
+                        # Saves testing results in './surrogate_outs'.
                         test_imgs_plot(fdir,it_total,data_dict, complex_mode, dataset)
 
+                    # Saves trained model in './surrogate_model_weights'.
+                    # Can set which iteration should the model be saved
                     if (it_total+1)%(it_max//100)==0:
                         if complex_mode:
                             save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_complex_model_"+str(it_total)+".ckpt")
@@ -362,6 +423,7 @@ def run(**kwargs):
                     it_total = it_total + 1
 
     else:
+        # The data is splitted according to 'tr_id_split' (see above).
         for tr_id in tr_id_split:
             if complex_mode:
                 X_train = np.complex64(jag_inp[tr_id,:])
@@ -370,16 +432,22 @@ def run(**kwargs):
                 X_train = jag_inp[tr_id,:]
                 y_sca_train = jag_sca[tr_id,:]
             y_img_train = jag_img[tr_id,:]
+
+            # Unlike 'fft-scattering-coef', the iteration per subset of data is only dependent on 'split_n'. With 'it_max//split_n',
+            # every subset of data will be given equal (statistically) no. of chance to be trained on.
             for it in range(it_max//split_n):
 
                 if X_train.shape[0] < batch_size:
                     batch_size = X_train.shape[0]
 
+                # The training indexes per subset of data is randomised
                 randid = np.random.choice(X_train.shape[0],batch_size,replace=False)
                 x_mb = X_train[randid,:]
                 y_img_mb = y_img_train[randid,:]
 
                 y_sca_mb = y_sca_train[randid,:]
+
+                # Feed dictionary for training (or the inputs to the training model)
                 fd = {x: x_mb, y_sca: y_sca_mb,y_img:y_img_mb,train_mode:True}
 
                 for _ in range(10):
@@ -420,8 +488,11 @@ def run(**kwargs):
                     data_dict['y_img'] = y_img_test
                     data_dict['x'] = x_test_mb
 
+                    # Saves testing results in './surrogate_outs'.
                     test_imgs_plot(fdir,it_total+1,data_dict, complex_mode, dataset)
 
+                # Saves trained model in './surrogate_model_weights'.
+                # Can set which iteration should the model be saved
                 if (it_total+1)%(it_max//100)==0:
                     if complex_mode:
                         save_path = saver.save(sess, "./"+modeldir+"/" + dataset + "_complex_model_"+str(it_total)+".ckpt")
@@ -435,6 +506,7 @@ def run(**kwargs):
     return
 
 if __name__=='__main__':
+    # Script starts to enter here
     run()
 
 ### srun -n 1 -N 1 -p pbatch -A lbpm --time=3:00:00 --pty /bin/sh
