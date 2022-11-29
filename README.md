@@ -22,8 +22,15 @@ The image selected in Step 2 has a working environment to run this repository. I
 
 To use the inertial confinement fusion dataset, *icf-jag*,
 
-1. Extract the *./data/icf-jag-10k.tar.gz* file using 7zip or command prompt.
-2. Extract the *./data/icf-jag-10k.tar/icf-jag-10k.tar* file using 7zip or command prompt.
+1. Make a *icf-jag* dataset folder using
+```
+	cd ./data
+	mkdir icf-jag-10k
+```
+2. Extract the *./data/icf-jag-10k.tar.gz* file, use
+```
+	tar -xvf icf-jag-10k.tar.gz -C ./icf-jag-10k/
+```
 3. Rearrange the *./data* directory so that it is:
 ```
 complex-macc/
@@ -41,7 +48,7 @@ complex-macc/
 4. [optional] Delete *./data/icf-jag-10k.tar.gz* file.
 5. Run the command below to convert *icf-jag* image data from float32 to complex64.
 ```
-python ./data/icf-jag_complex_data_preprocessing.py
+python icf-jag_complex_data_preprocessing.py
 ```
 6. Done!
 
